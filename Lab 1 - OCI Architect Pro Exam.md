@@ -23,6 +23,13 @@ Collected beforehand:
 
 (Console → Networking → Virtual Cloud Networks → click in to get these.)
 
+**MyLearn networking module refresher** (mind map from the course video, covers the
+broader OCI networking surface this lab's VCN/subnet prerequisites sit inside — DNS,
+VCN (route tables/gateways/VCN security), IP management, load balancers, and web app
+connectivity/peering/DRG/FastConnect):
+
+![](Lab%201%20-%20OCI%20Architect%20Pro%20Exam/mylearn_networking_mindmap.png)
+
 ## Step 1 — Open Cloud Shell
 
 Console → top-right icon bar → Developer Tools icon → **Cloud Shell**. Comes with Fn CLI, Docker, OCI CLI, and Terraform pre-installed.
