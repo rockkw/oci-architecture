@@ -10,6 +10,14 @@
 
 **Given your OCI Director/internal-employee role:** check whether Oracle internal employee training or exam-voucher benefits apply before paying the $245 out of pocket.
 
+**Active work session:** [Claude Code session](https://claude.ai/code/session_01Vk4Mik3VXSrWCwEuNZxm4s) —
+Terraform labs (`terraform/LABS.md`, esp. the unresolved `lab-oke-stack` node
+registration timeout), and live course-notes capture into
+[[12. Containers — OCI OKE, Container Instances, OCIR]] (paused at "Supported
+Images and Shapes for Worker Nodes" in the MyLearn Architect Cloud-Native
+Solutions module). Resume with `claude --continue` in the OCI_Pro_Notes
+directory, or point a fresh session at `terraform/LABS.md` and this note.
+
 ## Important 2026 correction
 
 Treat this as an **online, scenario-based certification exam**, not a Hands-on Performance Exam. Oracle’s 2025 Architect Professional learning path described an online certification exam of **1 hour 30 minutes**; the 2026 version replaced that exam in June. Confirm the live duration, number of questions, passing score, price, delivery rules, and objectives on the MyLearn registration page immediately before booking—those operational details can change.
