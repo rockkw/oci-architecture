@@ -9,6 +9,37 @@ The diagram lays out the two-region pattern from the design: the primary region'
 One thing the diagram can't show but is worth restating from the design doc: that dashed failover arrow at the bottom is **manually triggered**, not automatic — a deliberate choice given how consequential a full region failover is.
 
 ![](Lab%202%20-%20OCI%20Architect%20Pro%20Exam%20-%20HADR%20Design/oci_ha_dr_design.png)
+
+**Official MyLearn reference diagram, same architecture:** the course's own version of
+this pattern, worth comparing directly against the hand-drawn design above since it
+uses Oracle's own terminology and layout for the same two-region shape.
+
+![](Lab%202%20-%20OCI%20Architect%20Pro%20Exam%20-%20HADR%20Design/mylearn_full_stack_dr_architecture.png)
+
+A few things the official diagram makes explicit that are worth reconciling against
+this lab's design vocabulary below:
+
+- **DR Protection Group is drawn as the actual container** — WebLogic/SOA app tier
+  and Database grouped together inside one boxed "DR Protection Group (Primary)" /
+  "(Standby)" pair per region, with its own **DR plans** icon inside the box. This
+  matches "Layer 2 — Whole-stack level" below almost exactly: the DR Protection
+  Group *is* the unit Full Stack DR's Switchover/Failover operates on, not the
+  database or app tier individually — the diagram is showing that grouping as a
+  first-class resource, not just a conceptual boundary.
+- **DRG-to-DRG connects the two regions**, separate from the Oracle Data Guard link
+  between the two Database icons — two distinct connections drawn side by side: the
+  DRG pairing carries the region-to-region network path Full Stack DR's
+  orchestration and general inter-region traffic use, while the labeled "Oracle Data
+  Guard" arrow is specifically the database replication channel. Don't conflate
+  "the regions are network-connected via DRG" with "the database is
+  replicating" — they're drawn as two separate arrows because they're two separate
+  mechanisms, matching this lab's own "Layer 1 vs. Layer 2" split below.
+- **Full Stack Disaster Recovery is drawn as its own icon pair, distinct from the DR
+  Protection Group boxes** — sitting below both regions with a bidirectional arrow
+  between them. This visually reinforces that Full Stack DR is the *orchestration
+  service* coordinating the two DR Protection Groups, not a resource that lives
+  inside either region's group.
+
 ---
 
 ## Scenario used for this design
