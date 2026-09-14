@@ -37,7 +37,7 @@ Tenant sign in -
 1. **rocwyvpy14**
 2. https://cloud.oracle.com/?region=us-ashburn-1
 3. idtlmgo3jgde/oracleidentitycloudservice/rock.whitney@oracle.com
-4. Auth token - q5Ak4)o)[p)6ZG.2>uV(
+4. Auth token - [REDACTED — see local password manager]
 
 ## Official study spine
 

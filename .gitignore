@@ -1,3 +1,13 @@
 .DS_Store
 .claude/
 MeLinkedIn2026.PNG
+
+# Terraform
+terraform/**/.terraform/
+terraform/**/.terraform.lock.hcl
+terraform/**/*.tfstate
+terraform/**/*.tfstate.*
+terraform/**/*.tfvars
+terraform/**/*.tfvars.json
+terraform/**/crash.log
+terraform/**/crash.*.log
