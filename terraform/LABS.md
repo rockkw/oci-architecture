@@ -353,10 +353,27 @@ gets this (and everything else — bastion, operator, pod networking, FSS)
 right by construction instead of needing to be manually replicated rule by
 rule.
 
-**Net result:** the NSG-requirements theory is still the leading unconfirmed
-suspect for the node registration timeout — Path Analyzer would have been the fastest
-way to confirm or rule it out with a real trace, but is currently unavailable due to
-the missing IAM grant above.
+**CONFIRMED RESOLVED (2026-09-15).** Applied the fix directly to
+`lab-oke-stack`: added `oci_core_network_security_group` resources for
+`control_plane` and `workers`, with the 8 bidirectional rules covering ports
+6443/10250/12250/10256, attached to the cluster's `endpoint_config.nsg_ids`
+and the node pool's `node_config_details.nsg_ids`/`pod_nsg_ids`. Terraform
+recreated the node pool (adding `nsg_ids` forced replacement, not an
+in-place update). Both nodes reached `ACTIVE` cleanly — no timeout, no error,
+first successful `lab-oke-stack` apply after 3 total attempts (71 min
+failure, 24 min failure, then this fix). Root cause and fix both fully
+verified, not just diagnosed. `lab-oke-stack`'s `main.tf` now includes these
+NSGs permanently as of this commit — no further action needed for this
+stack.
+
+A separate, isolated comparison stack, `lab-oke-official-module-stack`, was
+also built (using Oracle's official module directly) specifically to
+cross-validate this diagnosis before applying the hand-fix — its planned NSG
+rules independently matched the hand-written fix rule for rule. It has not
+been applied (user asked to wait pending the hand-fix result, now confirmed
+successful) — still available for a real side-by-side comparison whenever
+useful (e.g., checking whether the official module's extra subnets/NSGs for
+bastion/operator/load-balancer roles matter for future labs).
 
 **Quota/service-limits ruled out (2026-09-15).** The MyLearn course's OKE module
 lists four prerequisite quota categories for cluster creation: Compute instance
