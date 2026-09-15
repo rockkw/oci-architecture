@@ -41,6 +41,163 @@ locals {
   ][0]
 }
 
+# NSGs for control-plane <-> worker-node traffic. lab-oke-stack originally had
+# no NSG at all and relied on the default security list (SSH/ICMP/443 only),
+# which caused node registration to time out — workers could never reach the
+# control plane's Kubelet/API endpoints. Rules below mirror the minimum set
+# from Oracle's official terraform-oci-oke module (modules/network/nsg-
+# controlplane.tf and nsg-workers.tf), trimmed to just what this stack needs
+# (no bastion/pod/FSS/LB-specific rules, since this stack doesn't use those).
+resource "oci_core_network_security_group" "control_plane" {
+  compartment_id = var.compartment_ocid
+  vcn_id         = var.vcn_id
+  display_name   = "lab-oke-control-plane-nsg"
+}
+
+resource "oci_core_network_security_group" "workers" {
+  compartment_id = var.compartment_ocid
+  vcn_id         = var.vcn_id
+  display_name   = "lab-oke-workers-nsg"
+}
+
+locals {
+  apiserver_port    = 6443
+  kubelet_api_port  = 10250
+  oke_port          = 12250
+  health_check_port = 10256
+}
+
+# Control plane -> workers
+resource "oci_core_network_security_group_security_rule" "cp_egress_to_workers_kubelet" {
+  network_security_group_id = oci_core_network_security_group.control_plane.id
+  direction                 = "EGRESS"
+  protocol                  = "6"
+  destination               = oci_core_network_security_group.workers.id
+  destination_type          = "NETWORK_SECURITY_GROUP"
+  tcp_options {
+    destination_port_range {
+      min = local.kubelet_api_port
+      max = local.kubelet_api_port
+    }
+  }
+}
+
+resource "oci_core_network_security_group_security_rule" "cp_ingress_from_workers" {
+  network_security_group_id = oci_core_network_security_group.control_plane.id
+  direction                 = "INGRESS"
+  protocol                  = "6"
+  source                    = oci_core_network_security_group.workers.id
+  source_type               = "NETWORK_SECURITY_GROUP"
+  tcp_options {
+    destination_port_range {
+      min = local.apiserver_port
+      max = local.apiserver_port
+    }
+  }
+}
+
+resource "oci_core_network_security_group_security_rule" "cp_egress_to_workers_oke_port" {
+  network_security_group_id = oci_core_network_security_group.control_plane.id
+  direction                 = "EGRESS"
+  protocol                  = "6"
+  destination               = oci_core_network_security_group.workers.id
+  destination_type          = "NETWORK_SECURITY_GROUP"
+  tcp_options {
+    destination_port_range {
+      min = local.oke_port
+      max = local.oke_port
+    }
+  }
+}
+
+resource "oci_core_network_security_group_security_rule" "cp_ingress_from_workers_oke_port" {
+  network_security_group_id = oci_core_network_security_group.control_plane.id
+  direction                 = "INGRESS"
+  protocol                  = "6"
+  source                    = oci_core_network_security_group.workers.id
+  source_type               = "NETWORK_SECURITY_GROUP"
+  tcp_options {
+    destination_port_range {
+      min = local.oke_port
+      max = local.oke_port
+    }
+  }
+}
+
+# Workers -> control plane
+resource "oci_core_network_security_group_security_rule" "workers_egress_to_cp_apiserver" {
+  network_security_group_id = oci_core_network_security_group.workers.id
+  direction                 = "EGRESS"
+  protocol                  = "6"
+  destination               = oci_core_network_security_group.control_plane.id
+  destination_type          = "NETWORK_SECURITY_GROUP"
+  tcp_options {
+    destination_port_range {
+      min = local.apiserver_port
+      max = local.apiserver_port
+    }
+  }
+}
+
+resource "oci_core_network_security_group_security_rule" "workers_egress_to_cp_oke_port" {
+  network_security_group_id = oci_core_network_security_group.workers.id
+  direction                 = "EGRESS"
+  protocol                  = "6"
+  destination               = oci_core_network_security_group.control_plane.id
+  destination_type          = "NETWORK_SECURITY_GROUP"
+  tcp_options {
+    destination_port_range {
+      min = local.oke_port
+      max = local.oke_port
+    }
+  }
+}
+
+resource "oci_core_network_security_group_security_rule" "workers_egress_to_cp_kubelet_health" {
+  network_security_group_id = oci_core_network_security_group.workers.id
+  direction                 = "EGRESS"
+  protocol                  = "6"
+  destination               = oci_core_network_security_group.control_plane.id
+  destination_type          = "NETWORK_SECURITY_GROUP"
+  tcp_options {
+    destination_port_range {
+      min = local.kubelet_api_port
+      max = local.kubelet_api_port
+    }
+  }
+}
+
+resource "oci_core_network_security_group_security_rule" "workers_ingress_from_cp" {
+  network_security_group_id = oci_core_network_security_group.workers.id
+  direction                 = "INGRESS"
+  protocol                  = "6"
+  source                    = oci_core_network_security_group.control_plane.id
+  source_type               = "NETWORK_SECURITY_GROUP"
+  tcp_options {
+    destination_port_range {
+      min = local.health_check_port
+      max = local.health_check_port
+    }
+  }
+}
+
+# Workers <-> workers (pod-to-pod / node-to-node traffic)
+resource "oci_core_network_security_group_security_rule" "workers_egress_to_workers" {
+  network_security_group_id = oci_core_network_security_group.workers.id
+  direction                 = "EGRESS"
+  protocol                  = "all"
+  destination               = oci_core_network_security_group.workers.id
+  destination_type          = "NETWORK_SECURITY_GROUP"
+}
+
+resource "oci_core_network_security_group_security_rule" "workers_ingress_from_workers" {
+  network_security_group_id = oci_core_network_security_group.workers.id
+  direction                 = "INGRESS"
+  protocol                  = "all"
+  source                    = oci_core_network_security_group.workers.id
+  source_type               = "NETWORK_SECURITY_GROUP"
+}
+
 resource "oci_containerengine_cluster" "lab_cluster" {
   compartment_id     = var.compartment_ocid
   name               = "lab-oke-cluster"
@@ -51,6 +208,7 @@ resource "oci_containerengine_cluster" "lab_cluster" {
   endpoint_config {
     is_public_ip_enabled = true
     subnet_id            = var.public_subnet_id
+    nsg_ids              = [oci_core_network_security_group.control_plane.id]
   }
 
   cluster_pod_network_options {
@@ -80,7 +238,8 @@ resource "oci_containerengine_node_pool" "lab_node_pool" {
   }
 
   node_config_details {
-    size = var.node_pool_size
+    size    = var.node_pool_size
+    nsg_ids = [oci_core_network_security_group.workers.id]
 
     placement_configs {
       availability_domain = data.oci_identity_availability_domains.ads.availability_domains[0].name
@@ -90,6 +249,7 @@ resource "oci_containerengine_node_pool" "lab_node_pool" {
     node_pool_pod_network_option_details {
       cni_type       = "OCI_VCN_IP_NATIVE"
       pod_subnet_ids = [var.private_subnet_id]
+      pod_nsg_ids    = [oci_core_network_security_group.workers.id]
     }
   }
 

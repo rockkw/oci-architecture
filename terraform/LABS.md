@@ -250,10 +250,156 @@ groups: `rocklz-network-admin-group`, `rocklz-iam-admin-group`) would need to ad
 statement granting this identity's group access to Path Analyzer's resource type
 before it's usable — not something to self-grant from `sandbox`.
 
+**Update (2026-09-15): course confirms OKE wants purpose-built subnets, not a
+generic pair.** OKE's Quick Create workflow auto-provisions **three distinct
+regional subnets** — one each for the Kubernetes API, worker nodes, and load
+balancers — not a generic public/private split. `lab-oke-stack` instead reuses
+`lab-network-stack`'s public subnet and `lab-private-network-stack`'s private
+subnet, both built for earlier, non-OKE labs. This is now the leading, sharpened
+theory: the shared private subnet likely lacks NSG/security-list rules specific
+to worker-node-to-API-subnet communication that a purpose-built, auto-created
+subnet would carry by default. See [[12. Containers — OCI OKE, Container Instances, OCIR]]'s
+"Prerequisites to create an OKE cluster" section for the full writeup.
+
+**Confirmed directly against `main.tf` (2026-09-15): this stack used Custom
+Create's shape, not Quick Create — exactly 2 subnets, not 3.**
+- `oci_containerengine_cluster.endpoint_config.subnet_id` = `var.public_subnet_id`
+  — the Kubernetes API endpoint sits on the **public** subnet.
+- `options.service_lb_subnet_ids` = `[var.public_subnet_id]` — the **same**
+  public subnet also serves load balancers. Quick Create would give this its
+  own dedicated subnet, separate from the API endpoint's.
+- `oci_containerengine_node_pool.node_config_details.placement_configs.subnet_id`
+  = `var.private_subnet_id` — worker nodes on the private subnet (also used by
+  `pod_subnet_ids` for `OCI_VCN_IP_NATIVE` pod networking).
+
+So this stack collapses what Quick Create splits into 3 purpose-built subnets
+(API, workers, load balancers) down to 2 general-purpose subnets doing double
+duty (API + LB sharing one; workers + pods sharing the other) — both originally
+built for prior, non-OKE labs (`lab-network-stack`, `lab-private-network-stack`),
+not configured with OKE's specific traffic needs in mind.
+
+**Correction from the course's Custom Create slide: reusing existing subnets is
+not itself the problem.** Custom Create explicitly supports "precise network
+resource selection using **existing** public or private subnets for Kubernetes
+API, worker nodes, and load balancers" — reuse is a first-class, supported path,
+not a workaround. The sharpened theory is specifically about **collapsed roles**,
+not reuse: `lab-oke-stack` gives the load balancer role the *same* subnet as the
+Kubernetes API role instead of a distinct one for each of the three roles. Two
+concrete next steps, either of which is a real test rather than more theorizing:
+(1) give the load balancer role its own distinct subnet and see if that alone
+changes node registration behavior, or (2) find the specific NSG/security-list
+rules Quick Create's auto-created subnets carry and diff them against what
+`lab-private-network-stack`'s subnet actually has.
+
+**Better source found for (2), from the course (2026-09-15): Oracle's own
+official Terraform module for OKE.**
+[`oracle-terraform-modules/terraform-oci-oke`](https://github.com/oracle-terraform-modules/terraform-oci-oke)
+— actively maintained (626 commits, latest release v5.0.1), the closest thing
+to an authoritative answer for exactly this open question, since it's Oracle's
+own reference implementation rather than something reverse-engineered from
+course slides. Its file layout is directly relevant:
+- `module-network.tf` — almost certainly the actual answer to what
+  subnets/NSGs/security rules OKE needs, in working Terraform rather than
+  prose.
+- `module-iam.tf` — likely resolves the open `CLUSTER_MANAGE` vs.
+  `manage cluster-family` question too.
+- `module-cluster.tf`, `module-bastion.tf`, `module-operator.tf`,
+  `module-extensions.tf` — worth a look for comparison against
+  `lab-oke-stack`'s hand-rolled approach generally.
+
+**Next time this is picked up: read `module-network.tf` and `module-iam.tf`
+directly before doing more manual trial-and-error** — this is a faster,
+more authoritative path to the answer than tests (1)/(2) above.
+
+**RESOLVED (2026-09-15): found the actual missing rules.** Fetched
+`modules/network/nsg-controlplane.tf` and `modules/network/nsg-workers.tf`
+from the official module (`gh api repos/oracle-terraform-modules/terraform-oci-oke/contents/...`).
+Oracle's own module creates two dedicated NSGs — one for the control plane,
+one for workers — with a specific bidirectional rule set between them. The
+exact ports (from `modules/network/locals.tf`): `apiserver_port = 6443`,
+`kubelet_api_port = 10250`, `oke_port = 12250`, `health_check_port = 10256`.
+
+**`lab-oke-stack` has none of this.** It creates no NSG at all — the node
+pool's `placement_configs` just places nodes in `lab-private-network-stack`'s
+subnet, which only carries the default security list confirmed earlier in
+this doc (SSH/22, ICMP, HTTPS/443 — see the `lab-bastion-stack` section
+above). Comparing against Oracle's module, the specific missing rules are:
+
+| Direction | Rule (per Oracle's module) | Port |
+|---|---|---|
+| workers → control plane | egress to Kubernetes API server | 6443 |
+| workers → control plane | egress to OKE control plane | 12250 |
+| workers → control plane | egress for **health check** (this is the Kubelet registration path) | **10250** |
+| control plane → workers | ingress from worker nodes | 6443 |
+| control plane → workers | egress to Kubelet on worker nodes | **10250** |
+| control plane ↔ workers | bidirectional OKE control plane traffic | 12250 |
+
+None of these ports (6443, 10250, 12250, 10256) are open anywhere in
+`lab-private-network-stack`'s security list. **This is almost certainly the
+root cause of the "2 nodes register timeout" error** — the worker nodes launch
+successfully (Compute-level provisioning works fine) but their Kubelet can't
+reach the control plane's registration/health-check endpoints on 10250, and
+the control plane can't reach back to the workers either, so registration
+times out rather than failing fast with a clear connection-refused error
+(consistent with a silent network-layer drop, not an application-level
+rejection).
+
+**Fix, next time this is applied:** add an NSG (or extend the private
+subnet's security list) with, at minimum, TCP 6443/10250/12250 bidirectional
+between the control plane and worker nodes — either hand-roll these
+specific rules in [[terraform/lab-oke-stack]], or migrate to using the
+official `oracle-terraform-modules/terraform-oci-oke` module directly, which
+gets this (and everything else — bastion, operator, pod networking, FSS)
+right by construction instead of needing to be manually replicated rule by
+rule.
+
 **Net result:** the NSG-requirements theory is still the leading unconfirmed
 suspect for the node registration timeout — Path Analyzer would have been the fastest
 way to confirm or rule it out with a real trace, but is currently unavailable due to
 the missing IAM grant above.
+
+**Quota/service-limits ruled out (2026-09-15).** The MyLearn course's OKE module
+lists four prerequisite quota categories for cluster creation: Compute instance
+quota, Block Volume quota (min. 50GB per persistent volume claim), Load Balancer
+quota, and VCN/Subnet quota. Checked all four directly via `oci limits value list`
+against the tenancy (not just `sandbox` — the Limits API requires the tenancy OCID):
+
+| Quota | Checked value | Needed | Verdict |
+|---|---|---|---|
+| `standard-a1-core-count` (compute) | 13,888 cores/AD | 2 nodes × 1 OCPU | Not the cause |
+| `total-storage-gb` / `volume-count` (block volume) | 500,000 GB / 100,000 vols per AD | 2 small boot volumes | Not the cause |
+| Load Balancer (`lb-flexible-count`, etc.) | up to 12,291/region | 0 (this stack creates no LB) | Not the cause |
+| `vcn-count` / `subnet-count` | 50 / 300 per region | 1 VCN, 2 subnets already exist | Not the cause |
+
+All four are ruled out with wide margin — this was never a quota problem.
+
+**New lead from the course, sharpens the NSG theory (2026-09-15).** The same
+module's prerequisites slide states that when you **designate existing network
+resources** for a cluster (VCN, subnets, IGW, route table, security lists) instead
+of letting OKE auto-create them, **"these must be pre-configured appropriately"** —
+without the slide detailing exactly what "appropriately" requires. This is exactly
+`lab-oke-stack`'s situation: it reuses `lab-network-stack`'s and
+`lab-private-network-stack`'s pre-existing VCN/subnets rather than using OKE's
+auto-create-network option. Strengthens the working theory that the private
+subnet's security list (or a missing NSG OKE would have auto-created for you) is
+under-provisioned relative to what an auto-created network would have set up —
+worth explicitly diffing what OKE's "automatically create and configure new network
+resources" option provisions against what `lab-private-network-stack` actually has,
+next time this is picked up.
+
+**IAM policy also ruled out (2026-09-15).** The course lists the specific policy
+statements OKE cluster creation needs: `manage cluster-family`, `use subnets`,
+`use network-security-groups`, `use vnics`, `use private-ips`, `manage
+instance-family`, `read virtual-network-family`, `inspect compartments`, and
+`manage public-ips`. Checked the tenancy's actual policies
+(`oci iam policy list`) for whether the identity applying `lab-oke-stack` has
+these — it does, via the built-in `Allow group Administrators to manage
+all-resources in tenancy` policy (documented in
+[[5. Security — OCI IAM, WAF, Certificates, Vault, Cloud Guard]]'s "What a policy
+actually does" section), which is a strict superset of every statement in this
+checklist. **IAM policy is not the cause** — this narrows the remaining
+candidates specifically to network/NSG configuration on the private subnet, not
+identity/authorization.
 
 **Where to check egress in the Console:** Networking → Virtual Cloud Networks →
 `lab-vcn` → Subnets → `lab-private-subnet` — the subnet detail page links directly to
