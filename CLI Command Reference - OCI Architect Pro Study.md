@@ -41,13 +41,31 @@ oci os ns get
 
 ## Fn CLI (Functions) setup and usage
 
-**One-time context setup:**
+**One-time context setup, in the order the Console's own "Getting Started"
+walkthrough presents it:**
 ```bash
-fn create context oci-lab --provider oracle
-fn use context oci-lab
+fn list context                                                    # confirm current context first
+fn use context <region>                                            # e.g. us-ashburn-1
 fn update context oracle.compartment-id <compartment-ocid>
-fn update context api-url https://functions.<region>.oci.oraclecloud.com
-fn update context registry <region-key>.ocir.io/<tenancy-namespace>/<repo-name>
+fn update context registry <region-key>.ocir.io/<tenancy-namespace>/<repo-name-prefix>
+```
+`<repo-name-prefix>` exists to **disambiguate your images from other
+people's** in a shared tenancy namespace — e.g. prefix `jdoe`, function
+`hello`, image path becomes
+`<region-key>.ocir.io/<tenancy-namespace>/jdoe/hello:0.0.1`. Not just a
+free-form label; it's the actual path segment other people's images won't
+collide with.
+
+**Authenticate to OCIR** (same auth-token mechanism as the general Docker/OCIR
+section below):
+```bash
+oci iam auth-token create --user-id <user-ocid> --description "fn cli"   # or generate via Console
+docker login -u '<tenancy-namespace>/<username>' <region-key>.ocir.io
+```
+
+**Verify setup worked — list applications in the compartment:**
+```bash
+fn list apps
 ```
 
 **Build and push a function:**
