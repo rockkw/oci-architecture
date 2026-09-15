@@ -77,7 +77,16 @@ fn push
 ```
 Prints the full image path on success, e.g. `phx.ocir.io/idtlmgo3jgde/lab-repo/lab-func:0.0.1` — needed as the `function_image` Terraform variable.
 
-**Known gap: `fn invoke` doesn't work from Cloud Shell.** It expects a classic `~/.oci/config` file with an API key, but Cloud Shell authenticates via a delegation token instead — that file doesn't exist. Use the OCI CLI's own invoke command instead (below) rather than troubleshooting `fn invoke` auth in Cloud Shell.
+**`fn invoke` (Fn Project CLI) is officially not recommended for production
+invocation — this isn't just a Cloud Shell quirk, it's the stated guidance.**
+Fn CLI is positioned for **local development and testing only**. For
+production/automation, use `oci fn function invoke` (below) instead — which
+also happens to sidestep the specific Cloud Shell auth gap: `fn invoke`
+expects a classic `~/.oci/config` file with an API key, but Cloud Shell
+authenticates via a delegation token instead, so that file doesn't exist
+there regardless of environment. Two separate reasons pointing at the same
+answer: prefer `oci fn function invoke` for anything beyond local dev, not
+just as a Cloud Shell workaround.
 
 ---
 
