@@ -115,6 +115,127 @@ cd ~ && zip -j <stack-name>.zip <folder-name>/*.tf
 
 ---
 
+## OCI Container Engine for Kubernetes (OKE)
+
+**Get cluster status:**
+```bash
+oci ce cluster get --cluster-id <cluster-ocid> --query "data.{name:name, state:\"lifecycle-state\"}" --output table
+```
+
+**List node pools under a cluster:**
+```bash
+oci ce node-pool list --compartment-id <compartment-ocid> --cluster-id <cluster-ocid> --all --query "data[].{name:name, id:id, state:\"lifecycle-state\"}" --output table
+```
+
+**Check individual node states/errors within a node pool** (the key diagnostic for a stuck/failed node pool — `lifecycle-details` shows the actual node-level status, e.g. `configuring`, not just the pool's overall state):
+```bash
+oci ce node-pool get --node-pool-id <node-pool-ocid> --query "data.nodes[].{name:name, state:\"lifecycle-state\", details:\"lifecycle-details\"}" --output table
+```
+
+**Query supported node pool images/shapes** (direct CLI counterpart to Terraform's `oci_containerengine_node_pool_option` data source):
+```bash
+oci ce node-pool-options get --node-pool-option-id all
+```
+
+**Generate a kubeconfig for `kubectl`** — merges into an existing `~/.kube/config` by default (does **not** clobber other contexts like `minikube`); pass `--overwrite` only if you actually want to replace the whole file:
+```bash
+oci ce cluster create-kubeconfig \
+  --cluster-id <cluster-ocid> \
+  --file ~/.kube/config \
+  --region <region> \
+  --token-version 2.0.0
+kubectl config get-contexts   # confirm the new context landed without wiping existing ones
+kubectl get nodes
+```
+
+**Known gotcha: nodes reaching `ACTIVE` doesn't mean `kubectl` can reach the cluster.** These are two separate network paths — node registration needs NSG rules between the control plane and worker nodes (ports 6443/10250/12250/10256), while external `kubectl` access needs a *separate* rule allowing your client's IP (or `0.0.0.0/0`) to reach the control plane's public endpoint on 6443. A `dial tcp <ip>:6443: i/o timeout` from `kubectl` after nodes are already `Ready` means the second path, not the first, is missing.
+
+---
+
+## Instance Cloud Agent plugins
+
+**Check plugin status on an instance** (e.g. confirming the Bastion plugin is actually `RUNNING`, not just configured):
+```bash
+oci instance-agent plugin list --instanceagent-id <instance-ocid> --compartment-id <compartment-ocid> --query "data[].{name:name, status:status}" --output table
+```
+
+**Enable/disable a plugin:**
+```bash
+oci compute instance update --instance-id <instance-ocid> --agent-config file://agent-config.json --force
+```
+where `agent-config.json` is:
+```json
+{
+  "isMonitoringDisabled": false,
+  "isManagementDisabled": false,
+  "pluginsConfig": [
+    {"name": "Bastion", "desiredState": "ENABLED"}
+  ]
+}
+```
+Setting desired state to `ENABLED` does not mean the plugin is immediately `RUNNING` — the Cloud Agent picks up config changes on its own polling cycle, which can take several minutes for a first-time enable. Poll the plugin list command above rather than assuming it's active right after the update call returns.
+
+---
+
+## Network Monitoring / Path Analyzer
+
+**Trace an actual network path between two endpoints** (the real diagnostic tool for "why can't A reach B," distinct from manually reasoning about route tables/NSGs/security lists by hand):
+```bash
+oci vn-monitoring path-analysis get-path-analysis-adhoc \
+  --compartment-id <compartment-ocid> \
+  --protocol 6 \
+  --source-endpoint file://source.json \
+  --destination-endpoint file://dest.json \
+  --protocol-parameters file://protocol.json \
+  --wait-for-state SUCCEEDED --wait-for-state FAILED
+```
+`source.json`/`dest.json` are typed endpoint objects — a `SUBNET` type needs **both** `subnetId` and an `address` within that subnet's CIDR, not just the subnet OCID:
+```json
+{"type": "SUBNET", "subnetId": "<subnet-ocid>", "address": "10.0.2.50"}
+```
+`protocol.json` for a TCP port check:
+```json
+{"type": "TCP", "destinationPort": 6443}
+```
+**Known gotcha: `oci vn-monitoring` is its own service group, not under `oci network`.** Also, a request can be perfectly well-formed and still fail with `"Not Authorized for Source or Destination Endpoint"` — this is a missing IAM policy grant for Path Analyzer's specific resource type, not a malformed request. Check `oci iam policy list` for a statement covering it before assuming the request itself is wrong.
+
+---
+
+## Service limits / quota checks
+
+**List current limit values for a service** (requires the **tenancy** OCID as `--compartment-id`, not a sub-compartment — this trips people up):
+```bash
+oci limits value list --compartment-id <tenancy-ocid> --service-name <service-name> --region <region> --all --query "data[].{name:name, value:value, scope:\"scope-type\"}" --output table
+```
+Common `--service-name` values: `compute`, `block-storage`, `load-balancer`, `vcn`. Filter `name` with `contains()` for a specific shape family, e.g. `--query "data[?contains(name,'a1')]..."` for Ampere A1 limits.
+
+---
+
+## GitHub (via `gh` CLI)
+
+**Fetch a single file's contents from a repo** (useful for reading a specific Terraform module file without cloning the whole repo):
+```bash
+gh api repos/<owner>/<repo>/contents/<path/to/file> --jq '.content' | base64 -d
+```
+
+**List files in a directory:**
+```bash
+gh api repos/<owner>/<repo>/contents/<path/to/dir> --jq '.[] | .name'
+```
+
+**Create a private repo from the current directory and push:**
+```bash
+gh repo create <name> --private --source=. --remote=origin --description "<description>"
+git push -u origin main
+```
+**Known gotcha:** if `gh auth status` shows `Git operations protocol: ssh` but this machine has no SSH key set up for git (push fails with `Permission denied (publickey)`), switch the remote to HTTPS and let `gh` supply credentials instead:
+```bash
+gh auth setup-git
+git remote set-url origin https://github.com/<owner>/<repo>.git
+```
+
+---
+
 ## Recall exercises
 
 - [ ] Explain why `--query "data[?is_home_region]"` returns an empty result against real OCI CLI JSON output, and what the corrected filter should look like.
