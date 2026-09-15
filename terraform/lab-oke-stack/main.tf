@@ -96,6 +96,24 @@ resource "oci_core_network_security_group_security_rule" "cp_ingress_from_worker
   }
 }
 
+# External kubectl clients (e.g. a laptop) also need to reach the API
+# endpoint — the worker rule above only covers node<->control-plane traffic.
+# The public subnet's security list already allows 443 from anywhere; this
+# mirrors that for 6443.
+resource "oci_core_network_security_group_security_rule" "cp_ingress_from_internet" {
+  network_security_group_id = oci_core_network_security_group.control_plane.id
+  direction                 = "INGRESS"
+  protocol                  = "6"
+  source                    = "0.0.0.0/0"
+  source_type               = "CIDR_BLOCK"
+  tcp_options {
+    destination_port_range {
+      min = local.apiserver_port
+      max = local.apiserver_port
+    }
+  }
+}
+
 resource "oci_core_network_security_group_security_rule" "cp_egress_to_workers_oke_port" {
   network_security_group_id = oci_core_network_security_group.control_plane.id
   direction                 = "EGRESS"

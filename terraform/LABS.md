@@ -375,6 +375,40 @@ successful) — still available for a real side-by-side comparison whenever
 useful (e.g., checking whether the official module's extra subnets/NSGs for
 bastion/operator/load-balancer roles matter for future labs).
 
+**Second, distinct gap found (2026-09-15): nodes registering ≠ kubectl
+working.** With both nodes `ACTIVE`, tried actually connecting with
+`kubectl` (`oci ce cluster create-kubeconfig --cluster-id <id> --file
+~/.kube/config --region us-phoenix-1 --token-version 2.0.0`, merges cleanly
+into an existing kubeconfig without `--overwrite`) — got
+`dial tcp 129.153.222.108:6443: i/o timeout`. Root cause: the
+`cp_ingress_from_workers` rule added for the registration-timeout fix above
+only allows port 6443 from the **workers NSG** — nothing allowed an
+**external client** (a laptop, not a cluster-internal resource) to reach the
+API endpoint. The public subnet's security list has 443 open from
+`0.0.0.0/0` but not 6443, and the control-plane NSG had no CIDR-based rule at
+all for 6443, only the NSG-to-NSG one.
+
+**Fix:** added `cp_ingress_from_internet` — TCP 6443 from `0.0.0.0/0` on
+`lab-oke-control-plane-nsg`, mirroring how 443 is already handled on the same
+subnet. Applied cleanly (1 resource, no recreate needed this time). Confirmed
+working immediately after:
+```
+$ kubectl get nodes
+NAME         STATUS   ROLES   AGE     VERSION
+10.0.2.12    Ready    node    7m39s   v1.36.1
+10.0.2.205   Ready    node    7m1s    v1.36.1
+```
+All `kube-system` pods `Running` (CoreDNS, `vcn-native-ip-cni`,
+`csi-oci-node`, `kube-proxy`, `oke-node-problem-detector`), `kubectl
+cluster-info` resolves correctly. `lab-oke-stack` is now fully working
+end-to-end, not just "nodes registered" — verified all the way through actual
+`kubectl` access, matching [[12. Containers — OCI OKE, Container Instances, OCIR]]'s
+"Accessing a cluster with kubectl" section.
+
+**Lesson for future labs:** "nodes reached ACTIVE" and "external tooling can
+reach the cluster" are two separate network paths that can each be broken
+independently — don't assume one working implies the other.
+
 **Quota/service-limits ruled out (2026-09-15).** The MyLearn course's OKE module
 lists four prerequisite quota categories for cluster creation: Compute instance
 quota, Block Volume quota (min. 50GB per persistent volume claim), Load Balancer
