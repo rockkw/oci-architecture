@@ -51,7 +51,8 @@ Tenant sign in -
 ### Week 1 — Translate AWS instincts; cloud-native and HA/DR
 
 - [x] Spend one focused session translating your fresh SAA-C03 knowledge: VPC → VCN, IAM roles → dynamic groups/policies, Direct Connect → FastConnect, S3/EBS/EFS → Object/Block/File Storage, CloudWatch → Monitoring/Logging/APM. Record the places where the analogy breaks.
-- [ ] Complete the learning-path modules/labs for OKE, Functions, API Gateway, OCI DevOps/OCIR, Terraform, and Resource Manager.
+- [x] Complete the learning-path modules/labs for OKE, Functions, API Gateway, OCI DevOps/OCIR, Terraform, and Resource Manager.
+  - [x] MyLearn course sections 1–4 (Introduction, HA/DR, Cloud-Native Solutions, Infrastructure as Code) — skill checks passed: Design Cloud-Native/Serverless (100%), Deliver Infrastructure-as-code (100%), HA/DR (80%). See [[MyLearn Skill Check Questions]] for the full question log, and [[12. Containers — OCI OKE, Container Instances, OCIR]] / [[14. Serverless — OCI Functions, Events, API Gateway]] / [[1. DevOps — OCI DevOps, CI-CD, Observability]] for the course-notes capture.
 - [x] In a non-production tenancy, deploy one small reference workload: API Gateway → Function or OKE service; provision at least one component through [Resource Manager](https://docs.oracle.com/en-us/iaas/Content/ResourceManager/Concepts/resourcemanager.htm), not click-ops.[
   - [x] [CLI Command Reference — OCI Architect Pro Study]]
   - [x] [[Lab 1 - OCI Architect Pro Exam]]
