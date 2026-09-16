@@ -1,0 +1,39 @@
+#cloud-config
+package_update: true
+packages:
+  - git
+
+# /etc/magnetlookup/env: cloud-init creates parent directories for
+# write_files entries automatically, so this is safe to write before
+# setup.sh runs. setup.sh only seeds this file with its own placeholder
+# when it doesn't already exist yet, so this lands first and its check
+# (`[ ! -f /etc/magnetlookup/env ]`) is skipped.
+write_files:
+  - path: /etc/magnetlookup/env
+    owner: root:root
+    permissions: '0640'
+    content: |
+      MAGNET_SEARCH_FILE=/opt/magnetlookup/data/search_term.txt
+      MAGNET_SEARCH_FILE_2=
+      MAGNET_URLS_FILE=/opt/magnetlookup/data/urls.txt
+      MAGNET_DB_FILE=/opt/magnetlookup/data/magnet_library.db
+      MAGNET_LOG_DIR=/opt/magnetlookup/data/logs
+      MAGNET_OUTPUT_DIR=/opt/magnetlookup/data/magnet_results
+      MAGNET_PORT=8080
+      MAGNET_JS_TIMEOUT=10
+      MAGNET_JS_PAUSE=2
+      MAGNET_REQUEST_DELAY=2
+      MAGNET_S3_BUCKET=${backup_bucket_name}
+
+runcmd:
+  - git clone https://github.com/rockkw/MyMagnet.git /opt/mymagnet-src
+  - bash /opt/mymagnet-src/deploy/setup.sh
+  # search_term.txt: setup.sh creates /opt/magnetlookup/data and seeds this
+  # file with a placeholder only if it doesn't exist — so write the real
+  # terms *after* setup.sh runs (its own directory-creation step), then
+  # restart the timer's next run picks up this file, not the placeholder.
+  - |
+    cat > /opt/magnetlookup/data/search_term.txt <<'MAGNET_SEARCH_TERMS_EOF'
+    ${search_terms}
+    MAGNET_SEARCH_TERMS_EOF
+  - chown magnetlookup:magnetlookup /opt/magnetlookup/data/search_term.txt

@@ -123,6 +123,56 @@ Outputs: `input_bucket_name`, `output_bucket_name`, `function_id`, `dynamic_grou
 
 ---
 
+### lab-mymagnet-stack
+Single-VM lift-and-shift of a real app
+([rockkw/MyMagnet](https://github.com/rockkw/MyMagnet)'s `deploy/` directory),
+from its existing AWS EC2/Lightsail deployment to OCI. One Ubuntu 24.04
+`VM.Standard.A1.Flex` instance (matching the AWS README's `t4g.small`
+sizing), a Reserved Public IP (stable across stop/start, needed for the
+README's DNS/Certbot TLS step), an NSG mirroring the README's security-group
+guidance exactly (80/443 public, 22 restricted to `var.ssh_allowed_cidr`,
+explicitly **not** 8080 — `webserver.py` binds to `127.0.0.1` only, nginx is
+the sole public entry point), an Object Storage bucket for future backups,
+and a dynamic group + policy granting the instance itself (not a Function)
+instance-principal access to that bucket.
+
+**cloud-init (`cloud-init.yaml.tftpl`) does the actual app install and
+config** — clones the repo, runs the existing `deploy/setup.sh` unmodified
+(the script is already OS-agnostic, `apt-get`-based, matches Ubuntu 24.04 —
+only the surrounding cloud infrastructure needed an OCI-native rewrite:
+EC2→Compute, security group→NSG, IAM role→dynamic group), then writes real
+config instead of leaving `setup.sh`'s own placeholders in place:
+- `/etc/magnetlookup/env` is written by cloud-init's `write_files` *before*
+  `setup.sh` runs, so `setup.sh`'s own `[ ! -f /etc/magnetlookup/env ]` seed
+  check finds it already present and skips its placeholder.
+- `search_term.txt` is written by a `runcmd` step *after* `setup.sh` (which
+  creates the `/opt/magnetlookup/data` directory as a side effect of
+  running), overwriting the placeholder terms `setup.sh` seeds first — real
+  terms come from the `search_terms` Terraform variable via
+  `templatefile()`, not a manual post-boot edit.
+
+End-to-end: `terraform apply` → Compute instance boots → cloud-init runs
+automatically (no SSH step required) → real app, real config, running
+systemd services, fully wired from Terraform variables to a live instance.
+
+**Deliberately deferred, not ported:** `deploy/backup_to_s3.sh` calls the
+`aws` CLI directly and won't work against OCI Object Storage as-is — the
+bucket and IAM policy are provisioned so it's ready for a future
+`backup_to_oci.sh` (using `oci os object put`) plus a new systemd timer
+unit, but that script itself hasn't been written yet. The `magnetlookup-backup`
+timer from the original repo isn't installed/enabled by this stack.
+
+**Verified before writing:** `oci_core_public_ip`'s reserved-IP-to-instance
+attachment pattern needs the instance's *primary private IP OCID*
+specifically (via `oci_core_vnic_attachments` → `oci_core_private_ips`), not
+the instance ID directly — checked against the Terraform provider docs
+before use, since an earlier draft of this resource block had that wrong.
+
+Depends on: `lab-network-stack` (`vcn_id`, `subnet_id`)
+Outputs: `instance_id`, `public_ip`, `backup_bucket_name`
+
+---
+
 ## New labs
 
 Everything so far was public-facing. These four labs round out the picture: private
