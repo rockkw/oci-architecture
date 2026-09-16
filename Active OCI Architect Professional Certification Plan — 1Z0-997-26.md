@@ -11,12 +11,15 @@
 **Given your OCI Director/internal-employee role:** check whether Oracle internal employee training or exam-voucher benefits apply before paying the $245 out of pocket.
 
 **Active work session:** [Claude Code session](https://claude.ai/code/session_01Vk4Mik3VXSrWCwEuNZxm4s) —
-Terraform labs (`terraform/LABS.md`, esp. the unresolved `lab-oke-stack` node
-registration timeout), and live course-notes capture into
-[[12. Containers — OCI OKE, Container Instances, OCIR]] (paused at "Supported
-Images and Shapes for Worker Nodes" in the MyLearn Architect Cloud-Native
-Solutions module). Resume with `claude --continue` in the OCI_Pro_Notes
-directory, or point a fresh session at `terraform/LABS.md` and this note.
+the `lab-oke-stack` node registration timeout is resolved (see
+`terraform/LABS.md`) and [[12. Containers — OCI OKE, Container Instances, OCIR]]
+is fully rewritten to OCI-native content. Terraform work has since moved on to
+`lab-document-understanding-stack` (event-driven OCR pipeline) and
+`lab-mymagnet-stack` (AWS→OCI lift-and-shift), both in `terraform/LABS.md`.
+**Next open item in this plan is Week 2**: the four remaining security modules
+(Network Security, Data Protection, Maintaining Security Posture, OS and
+Workload Protection) and the database-service comparison deliverable. Resume
+with `claude --continue` in the OCI_Pro_Notes directory.
 
 ## Important 2026 correction
 
@@ -58,7 +61,7 @@ Tenant sign in -
   - [x] [[Lab 1 - OCI Architect Pro Exam]]
 - [x] Design—not necessarily provision—an HA/DR pattern. Include AD/fault-domain placement, backup versus replication, RPO/RTO, and failover ownership. Study [Full Stack Disaster Recovery](https://docs.oracle.com/en-us/iaas/disaster-recovery/doc/about-disaster-recovery.html) alongside Data Guard concepts.
   - [x] [[Lab 2 - OCI Architect Pro Exam - HA\/DR Design]]
-- [x] Deliverable: a one-page “AWS to OCI exceptions” note plus an architecture sketch with named failure modes.
+- [x] Deliverable: a one-page “AWS to OCI exceptions” note plus an architecture sketch with named failure modes. See [[AWS to OCI Exceptions]].
 
 ### Week 2 — Security, governance, and database choices
 **~[Become a Cloud Security Professional \(2025\)](https://learn.oracle.com/ols/learning-path/become-a-cloud-security-professional-2025/118071/147744)~**
