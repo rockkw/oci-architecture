@@ -9,5 +9,6 @@ terraform/**/*.tfstate
 terraform/**/*.tfstate.*
 terraform/**/*.tfvars
 terraform/**/*.tfvars.json
+terraform/**/*.tfplan
 terraform/**/crash.log
 terraform/**/crash.*.log

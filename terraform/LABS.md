@@ -137,11 +137,9 @@ and a dynamic group + policy granting the instance itself (not a Function)
 instance-principal access to that bucket.
 
 **cloud-init (`cloud-init.yaml.tftpl`) does the actual app install and
-config** — clones the repo, runs the existing `deploy/setup.sh` unmodified
-(the script is already OS-agnostic, `apt-get`-based, matches Ubuntu 24.04 —
-only the surrounding cloud infrastructure needed an OCI-native rewrite:
-EC2→Compute, security group→NSG, IAM role→dynamic group), then writes real
-config instead of leaving `setup.sh`'s own placeholders in place:
+config** — clones the repo, runs the existing `deploy/setup.sh` (the
+GitHub-hosted script itself is never edited), then writes real config
+instead of leaving `setup.sh`'s own placeholders in place:
 - `/etc/magnetlookup/env` is written by cloud-init's `write_files` *before*
   `setup.sh` runs, so `setup.sh`'s own `[ ! -f /etc/magnetlookup/env ]` seed
   check finds it already present and skips its placeholder.
@@ -154,6 +152,46 @@ config instead of leaving `setup.sh`'s own placeholders in place:
 End-to-end: `terraform apply` → Compute instance boots → cloud-init runs
 automatically (no SSH step required) → real app, real config, running
 systemd services, fully wired from Terraform variables to a live instance.
+
+**Three real bugs surfaced across the first several `apply`s, none visible
+from `terraform plan`/`validate` — all three only showed up after SSHing
+into a live instance, since the app is intentionally deployed via cloud-init
+rather than a provisioner:**
+
+1. **Silent YAML parse failure.** An early draft interpolated the
+   multi-line `search_terms` variable directly into a shell heredoc nested
+   inside the `#cloud-config` YAML document. The default terms include the
+   line `Ubuntu 24.04`, which at column 1 of the *rendered* YAML parses as
+   an invalid mapping key. Cloud-init's failure mode here is silent: it logs
+   a WARNING to `cloud-init-output.log` and treats the whole cloud-config as
+   empty — `packages`, `write_files`, and `runcmd` all silently do nothing,
+   with no boot failure and no external signal beyond a plain TCP reset on
+   port 80 (nginx never installed). Confirmed three separate `apply`s hit
+   this identically before it was diagnosed via direct SSH. Fixed by
+   base64-encoding `search_terms` in the template and decoding with
+   `base64 -d` in a single-line `runcmd` entry — base64 has no characters
+   that can break YAML or shell parsing, regardless of the terms' content.
+2. **`awscli` isn't an apt package on Ubuntu 24.04 ARM.** `setup.sh`
+   installs `awscli` via `apt-get` alongside nginx/python/etc, but that
+   package doesn't exist on the `ubuntu-ports` (ARM) repos — only on
+   x86_64. `setup.sh` runs under `set -euo pipefail`, so this one missing
+   package aborted the entire script before nginx, the venv, or any systemd
+   unit was installed. Since backups to S3 are already deliberately out of
+   scope for this OCI deployment (see below), a real `awscli` install isn't
+   needed at all — cloud-init `sed`-patches the `awscli \` line out of the
+   *local checkout's* `deploy/setup.sh` (not the upstream repo file) in a
+   `runcmd` step, right after cloning and before running the script.
+3. **OCI's default per-instance firewall blocks 80/443 even though the NSG
+   allows it.** Oracle's base Ubuntu image ships its own `iptables`
+   ruleset — separate from, and in addition to, the OCI Network Security
+   Group — that only allows inbound SSH (22) and established connections by
+   default. This has no EC2/Lightsail equivalent (those rely on the cloud
+   security group as the only inbound gate), so it wasn't something the
+   original `deploy/README.md` needed to mention. `curl http://localhost/`
+   worked while `curl http://<public-ip>/` reset, which was the tell.
+   Fixed with explicit `iptables -I INPUT ... ACCEPT` rules for 80/443 plus
+   `netfilter-persistent save` (already installed on the base image) so the
+   rules survive reboots.
 
 **Deliberately deferred, not ported:** `deploy/backup_to_s3.sh` calls the
 `aws` CLI directly and won't work against OCI Object Storage as-is — the

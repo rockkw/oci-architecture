@@ -27,13 +27,36 @@ write_files:
 
 runcmd:
   - git clone https://github.com/rockkw/MyMagnet.git /opt/mymagnet-src
+  # setup.sh does `apt-get install ... awscli ...` alongside nginx/python/etc,
+  # but the `awscli` apt package doesn't exist on Ubuntu 24.04's ARM
+  # (ubuntu-ports) repos — only on x86_64. Since set -euo pipefail in setup.sh
+  # means that one missing package aborts the ENTIRE script (nginx, the venv,
+  # systemd units — none of it ran), and backups to S3 are deliberately out
+  # of scope for this OCI deployment (see backup_bucket_name_override in
+  # variables.tf), strip awscli from the install line before running the
+  # script rather than actually installing it. This patches the local
+  # checkout only — the upstream deploy/setup.sh in the repo is untouched.
+  - sed -i '/^  awscli \\$/d' /opt/mymagnet-src/deploy/setup.sh
   - bash /opt/mymagnet-src/deploy/setup.sh
+  # Oracle's default Ubuntu image ships its own iptables ruleset that only
+  # allows inbound 22 (SSH) and established connections by default — unlike
+  # EC2/Lightsail, where the cloud security group is normally the only
+  # inbound gate. The mymagnet-nsg NSG (see main.tf) already opens 80/443 at
+  # the OCI network layer; this opens the matching OS-level ports so nginx is
+  # actually reachable. Inserted before the trailing REJECT rule.
+  - iptables -I INPUT -p tcp --dport 80 -m state --state NEW -j ACCEPT
+  - iptables -I INPUT -p tcp --dport 443 -m state --state NEW -j ACCEPT
+  - netfilter-persistent save
   # search_term.txt: setup.sh creates /opt/magnetlookup/data and seeds this
   # file with a placeholder only if it doesn't exist — so write the real
-  # terms *after* setup.sh runs (its own directory-creation step), then
-  # restart the timer's next run picks up this file, not the placeholder.
-  - |
-    cat > /opt/magnetlookup/data/search_term.txt <<'MAGNET_SEARCH_TERMS_EOF'
-    ${search_terms}
-    MAGNET_SEARCH_TERMS_EOF
+  # terms *after* setup.sh runs (its own directory-creation step). Passed
+  # as base64 to avoid embedding a raw multi-line value inside YAML/shell —
+  # a prior version interpolated search_terms directly into a shell heredoc
+  # nested in this YAML document, and a line like "Ubuntu 24.04" at column 1
+  # was misparsed as a YAML mapping key, silently invalidating the ENTIRE
+  # #cloud-config document (cloud-init logs the parse failure but does not
+  # fail the boot — it just runs none of packages/write_files/runcmd at
+  # all). base64 has no characters YAML or shell need to escape, so this
+  # can't recur regardless of what search_terms contains.
+  - echo '${base64encode(search_terms)}' | base64 -d > /opt/magnetlookup/data/search_term.txt
   - chown magnetlookup:magnetlookup /opt/magnetlookup/data/search_term.txt
