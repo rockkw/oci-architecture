@@ -717,6 +717,53 @@ your service limits before picking one.
 
 ---
 
+## Candidate lab — not yet built
+
+### lab-zpr-stack (idea)
+
+Zero Trust Packet Routing, provisioned via Terraform — confirmed feasible: the
+`oracle/oci` provider has shipped `oci_zpr_configuration` (tenancy onboarding)
+and `oci_zpr_zpr_policy` (the policy itself, `statements` in ZPR Policy
+Language) since **v6.12.0** (Oct 2024). See
+[[5. Security — OCI IAM, WAF, Certificates, Vault, Cloud Guard]] for the full
+concept writeup (the MyLearn scenario this would mirror: a Science App tagged
+`#app:science` allowed to reach a Central Database tagged
+`#database:sensitive`, blocking an external-attacker path that reaches the
+same subnet over broader public access).
+
+Minimal shape if built:
+```hcl
+resource "oci_zpr_configuration" "this" {
+  compartment_id = var.tenancy_ocid
+  zpr_status     = "ENABLED"
+}
+
+resource "oci_zpr_zpr_policy" "this" {
+  compartment_id = var.tenancy_ocid
+  name           = "lab-zpr-policy"
+  description    = "app-tier to db-tier, ZPR attribute-based"
+  statements = [
+    "endpoint type='database' from security_attribute='app-tier' to security_attribute='db-tier' allow"
+  ]
+}
+```
+
+**Known gap to check before building:** the security attribute itself (e.g.
+`app-tier`, `db-tier`) is tagged onto the *target resource*, not created as
+its own `oci_zpr_*` resource — and per-resource-type Terraform support for
+attaching that tag rolled out incrementally (Compute in v6.15.0; Functions,
+HeatWave, OpenSearch, GoldenGate together in v7.22.0, Oct 2025). Before
+building this against `lab-nsg-stack`'s existing Compute instance, confirm
+the current provider version actually supports a security-attribute block on
+`oci_core_instance` — Compute should be safe (landed earliest), but verify
+against the live provider docs rather than assuming.
+
+Would depend on `lab-network-stack` (VCN/subnet) and `lab-nsg-stack`
+(instance) the same way other network-security labs do; standalone otherwise
+— no new dependents downstream.
+
+---
+
 ## Notes
 
 - All stacks have been dry-run with `terraform plan` against a live, authenticated

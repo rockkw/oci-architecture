@@ -92,6 +92,21 @@ cert plan as a place where OCI Pro diverges hardest from AWS instincts.)
   (Service Gateway, private endpoints, Private Access Channel) vary per
   service rather than following one uniform mechanism the way AWS PrivateLink
   does.
+- **Zero Trust Packet Routing (ZPR) has no AWS equivalent.** Security groups
+  and NACLs — no matter how they're organized or referenced — are
+  fundamentally address-and-port constructs: a rule always resolves to a
+  CIDR/SG-ID and a port. ZPR instead tags resources directly with security
+  attributes (e.g., `#app:science`, `#database:sensitive`) and writes policy
+  against those attributes, so the policy survives the underlying resource's
+  IP changing entirely — no equivalent rule-rewrite is needed the way it
+  would be for an NSG/security-group rule referencing a specific address.
+  AWS's nearest partial analogs — security group references and tag-based IAM
+  conditions — don't unify network reachability and security intent into one
+  declarative, address-independent construct the way ZPR does. See
+  [[5. Security — OCI IAM, WAF, Certificates, Vault, Cloud Guard]] for the
+  worked example: a single mistyped CIDR digit in a hand-authored NSG rule
+  went unnoticed through a two-person review process — the exact class of
+  error ZPR's attribute model removes structurally.
 
 ## Containers (OKE)
 
