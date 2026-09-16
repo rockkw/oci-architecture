@@ -89,6 +89,40 @@ Outputs: `gateway_hostname`
 
 ---
 
+### lab-document-understanding-stack
+Event-driven document OCR pipeline: an input Object Storage bucket, an output
+bucket, an OCI Functions application/function, an Events rule that invokes the
+function on `com.oraclecloud.objectstorage.createobject` in the compartment, and
+a dynamic group + IAM policy authorizing the function (via resource principal) to
+read/write both buckets and run OCI **Document Understanding** processor jobs.
+
+The function itself (`func.py`) uses
+`oci.auth.signers.get_resource_principals_signer()` — the same pattern documented
+in [[14. Serverless — OCI Functions, Events, API Gateway]] — to call
+`AIServiceDocumentClient.create_processor_job()` with a `GeneralProcessorConfig` /
+`DocumentTextExtractionFeature`, pointing at the uploaded object as
+`input_location` and writing OCR results to `output_location` in the output
+bucket under a `results/<object-name>` prefix.
+
+**Why Terraform doesn't create the processor job resource directly:**
+`oci_ai_document_processor_job` exists as a Terraform resource, but it needs to
+know the specific object key at `apply` time — it can't react to objects
+uploaded *after* the stack is applied. The job itself has to be created at
+runtime, per-upload, which is exactly what the Function's code does instead.
+
+**Not yet applied — same category of caveat as `lab-func-stack`:** `function_image`
+is a placeholder pointing at an image that doesn't exist in OCIR yet. Needs
+`fn build && fn push` from this directory before `terraform apply` can succeed on
+the `oci_functions_function` resource. IAM policy statements were written from
+Oracle's documented `ai-service-document-family` / `ai-service-document-processor-job`
+resource types (verified via search, not yet dry-run planned against the live
+tenancy the way the original lab batch was).
+
+Depends on: `lab-network-stack` (`subnet_id`)
+Outputs: `input_bucket_name`, `output_bucket_name`, `function_id`, `dynamic_group_id`
+
+---
+
 ## New labs
 
 Everything so far was public-facing. These four labs round out the picture: private
