@@ -140,3 +140,100 @@ C ("Terraform is an IaaS") is false for a category reason: Terraform is IaC (Inf
 A ("alias") and B (CLI/provider version independence) are both **true**, confirmed directly from this session's own `main.tf` files (`provider "oci" { alias = "home" }` used in `lab-storage-stack`/`lab-oke-official-module-stack`; `required_version` and `required_providers { oci = { version = ... } }` are separate, uncoupled fields in every stack) and cross-checked against HashiCorp's own docs on CLI/provider version independence before submitting.*
 
 ---
+
+## Skill Check: Design Scalable and Elastic Solutions for High Availability and Disaster Recovery
+
+### Q1
+Which are the two main metrics to measure the effectiveness of a Disaster Recovery setup? **Select TWO correct answers.**
+
+A. Mean Time to Recover (MMTR)
+B. Minimum Time to Recover (MITR)
+C. Recovery Point Objective (RPO)
+D. Recover Time Objective (RTO)
+
+**Answer: C, D** (selected correctly)
+
+*RPO (how much data loss is acceptable — how far back in time) and RTO (how long the outage can last before recovery) are the standard pair of DR-effectiveness metrics, already the backbone of the design reasoning in [[Lab 2 - OCI Architect Pro Exam - HADR Design]] — e.g. that lab's RPO-near-zero requirement is exactly what justified choosing Data Guard over backup-only for the database tier. A and B are not standard DR-effectiveness terminology.*
+
+---
+
+### Q2
+Which Disaster Recovery strategy provides data protection and availability for Oracle Database by maintaining an exact physical replica of the production copy at a remote location that is open read-only while replication is active?
+
+A. Physical Standby
+B. Active Data Guard
+C. Golden Gate
+D. Oracle Streams
+
+**Answer: B** (selected correctly)
+
+*Verified against Oracle's docs (blogs.oracle.com/ebstech and database-heartbeat.com corroborating). A real licensing distinction, not just naming overlap: a plain **Physical Standby** can be opened read-only, but only if redo apply is stopped first — replication and read-only access are mutually exclusive without the add-on. **Active Data Guard** is the licensed option that specifically allows read-only access **while redo apply keeps running simultaneously**. The question's exact phrasing ("open read-only while replication is active") is the tell that distinguishes B from A. See [[6. Databases — OCI Database, NoSQL, Caching, DR]]'s "Availability, read scale, and recovery" table, now updated with this distinction.*
+
+---
+
+### Q3
+Which two statements about availability domains (AD) are true? **Select TWO correct answers.**
+
+A. They provide high availability for application resources within a fault domain.
+B. One region can have only one AD.
+C. A regional subnet can be shared between two ADs.
+D. Multiple ADs will never share physical infrastructure.
+
+**Answer: C, D** (selected correctly)
+
+*A's relationship is inverted — the real hierarchy is Region → Availability Domains → Fault Domains, so it's fault domains that isolate *within* an AD, not ADs providing HA within a fault domain. B is false as an absolute claim since region AD-count varies (1 or 3 depending on the region). C matches this session's own hands-on work directly — `lab-network-stack`'s subnet is regional, spanning every AD in the region, exactly as shown in the three-tier HA diagram in [[9. Networking — OCI VCN, DRG, Gateways, Load Balancers]]. D is the core definition of an AD: physically isolated data center with independent power/cooling/networking.*
+
+---
+
+### Q4
+How many Fault Domains does one Availability Domain contain?
+
+A. Two
+B. Three
+C. Four
+D. One
+
+**Answer: B** (selected correctly)
+
+*A fixed number, not something that varies — every AD always has exactly 3 fault domains, regardless of region or AD count. This is why 3-way spread patterns show up repeatedly across OCI HA designs (e.g. the three-tier reference diagram in [[9. Networking — OCI VCN, DRG, Gateways, Load Balancers]]). See [[3. Compute — OCI Compute, Instance Pools, Load Balancers, Volumes]]'s "High availability and scaling" section, now updated with this exact count.*
+
+---
+
+### Q5
+Which three key elements should be considered when designing high availability architecture? **Select THREE correct answers.**
+
+A. Scalability
+B. Monitoring
+C. Redundancy
+D. Failover
+E. Virtualization
+
+**Answer: B, C, D (Monitoring, Redundancy, Failover)** — selected A, C, D
+(Scalability instead of Monitoring); this was the one miss on this skill
+check (4/5 overall).
+
+*Corrects my own in-session reasoning: I argued Monitoring was merely a
+supporting/observability concern rather than a core HA pillar, and treated
+Scalability as one of the three — MyLearn's grading says the opposite.
+Oracle's framing here treats **Monitoring** (detecting failures/performance
+issues in real time) as a first-class HA design pillar alongside
+**Redundancy** (duplicating critical components so backups exist) and
+**Failover** (the mechanism for switching to that backup — the Layer 1/Layer
+2 Switchover-Failover distinction already worked out in
+[[Lab 2 - OCI Architect Pro Exam - HADR Design]]). Scalability is a related,
+important design concern but wasn't one of *these three* per this question's
+intended framing — worth remembering that "important to HA" and "one of the
+three canonical HA pillars this specific question wants" aren't always the
+same list.*
+
+---
+
+## Result: 4/5 (80%)
+
+Only miss was Q5 (Monitoring vs. Scalability as a core HA pillar) — worth a
+review pass on Oracle's specific framing of HA design pillars
+(Redundancy/Failover/Monitoring) before the real exam, since it doesn't
+exactly match the more generic "scalability + resilience" framing that
+feels intuitive coming from general cloud-architecture reasoning.
+
+---
