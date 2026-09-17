@@ -19,6 +19,7 @@ lab-network-stack
         └── lab-oke-gpu-stack (needs lab-oke-stack's cluster_id)
 
 lab-func-stack   (standalone — only depends on lab-network-stack's subnet)
+lab-zpr-stack    (standalone — own VCN/subnet, no dependency on any other stack)
 ```
 
 Apply order: `lab-network-stack` → `lab-nsg-stack` → everything else, in any order.
@@ -717,50 +718,81 @@ your service limits before picking one.
 
 ---
 
-## Candidate lab — not yet built
+### lab-zpr-stack
 
-### lab-zpr-stack (idea)
-
-Zero Trust Packet Routing, provisioned via Terraform — confirmed feasible: the
-`oracle/oci` provider has shipped `oci_zpr_configuration` (tenancy onboarding)
-and `oci_zpr_zpr_policy` (the policy itself, `statements` in ZPR Policy
-Language) since **v6.12.0** (Oct 2024). See
+Zero Trust Packet Routing, provisioned entirely via Terraform. Mirrors the
+MyLearn "Scenario" lab exactly: two Compute instances (VM-01, VM-02) on one
+public subnet, a security list wide open on port 22 from `0.0.0.0/0` (the
+scenario's own deliberately-over-permissive starting point), an NSG fix
+restricting VM-02's SSH ingress to VM-01's private IP only (the scenario's
+first stated remediation), and a ZPR policy layered on top that holds
+regardless of what the security list or NSG say. See
 [[5. Security — OCI IAM, WAF, Certificates, Vault, Cloud Guard]] for the full
-concept writeup (the MyLearn scenario this would mirror: a Science App tagged
-`#app:science` allowed to reach a Central Database tagged
-`#database:sensitive`, blocking an external-attacker path that reaches the
-same subnet over broader public access).
+concept writeup — the Science App and CarCo scenarios this stack's ZPR layer
+is modeled on.
 
-Minimal shape if built:
-```hcl
-resource "oci_zpr_configuration" "this" {
-  compartment_id = var.tenancy_ocid
-  zpr_status     = "ENABLED"
-}
+**Standalone** — its own VCN/subnet, not built on `lab-network-stack` or
+`lab-nsg-stack`, so it has no apply-order dependency on any other stack.
 
-resource "oci_zpr_zpr_policy" "this" {
-  compartment_id = var.tenancy_ocid
-  name           = "lab-zpr-policy"
-  description    = "app-tier to db-tier, ZPR attribute-based"
-  statements = [
-    "endpoint type='database' from security_attribute='app-tier' to security_attribute='db-tier' allow"
-  ]
-}
+Outputs: `vm_01_public_ip`, `vm_01_private_ip`, `vm_02_public_ip`, `zpr_policy_id`
+
+**Four-part ZPR layer, none of which existed as a single `oci_zpr_*` resource
+the way the earlier "candidate" note assumed:**
+
+1. `oci_zpr_configuration` — one-time tenancy (root compartment) onboarding.
+2. `oci_security_attribute_security_attribute_namespace` — a custom
+   namespace (`ZprLabRole`), since a real tenancy must define its own rather
+   than relying on the sample `Oracle-DataSecurity-ZPR` namespace shown in
+   Oracle's own provider docs.
+3. `oci_security_attribute_security_attribute` — an `ENUM`-validated
+   attribute (`SshRole`, values `trusted-source` / `ssh-target`) inside that
+   namespace. This pairing (namespace + attribute) is the ZPR-specific
+   analog of `oci_identity_tag_namespace`/`oci_identity_tag` for regular
+   defined tags — a separate `Security Attribute` service, not `Identity`.
+4. `oci_core_instance.security_attributes` — a map argument directly on
+   each instance (`"ZprLabRole.SshRole.value" = "trusted-source"` /
+   `"ssh-target"`), **not** inside `create_vnic_details` — the OCI API
+   rejects `security_attributes` supplied in both places on one launch
+   request, so this stack sets it only on the top-level instance resource.
+
+`oci_zpr_zpr_policy.ssh_lockdown`'s single statement then ties it together:
+```
+endpoint type='compute' from security_attribute='ZprLabRole.SshRole.trusted-source'
+to security_attribute='ZprLabRole.SshRole.ssh-target' with protocol='tcp/22' allow
 ```
 
-**Known gap to check before building:** the security attribute itself (e.g.
-`app-tier`, `db-tier`) is tagged onto the *target resource*, not created as
-its own `oci_zpr_*` resource — and per-resource-type Terraform support for
-attaching that tag rolled out incrementally (Compute in v6.15.0; Functions,
-HeatWave, OpenSearch, GoldenGate together in v7.22.0, Oct 2025). Before
-building this against `lab-nsg-stack`'s existing Compute instance, confirm
-the current provider version actually supports a security-attribute block on
-`oci_core_instance` — Compute should be safe (landed earliest), but verify
-against the live provider docs rather than assuming.
+**Verification history — this took two research passes to get right, worth
+recording since the wrong syntax still produces a schema-valid `terraform
+validate` pass:**
+- First pass used freeform, unnamespaced strings
+  (`security_attribute='vm:trusted-source'`) based only on the MyLearn
+  slides' `#app:science`-style tag syntax, which is UI shorthand, not the
+  underlying data model. `terraform validate` accepted this silently — it
+  only checks HCL syntax, not whether a string argument matches the OCI
+  API's expected format.
+- Second research pass confirmed against the provider's own doc source
+  (raw `core_instance.html.markdown`) that `security_attributes` values are
+  namespaced exactly like defined tags: `"<Namespace>.<AttributeName>.value"
+  = "<value>"`. This surfaced the further fact that the namespace/attribute
+  are themselves real, separately-provisioned resources
+  (`oci_security_attribute_security_attribute_namespace` /
+  `oci_security_attribute_security_attribute`), not implicit strings — the
+  original "candidate" note in this file didn't know these existed.
+- `terraform plan` against the live tenant (compartment `sandbox`) with this
+  corrected syntax succeeded cleanly: **13 resources to add, 0 errors** —
+  confirms schema/argument-shape correctness, though the ZPR Policy
+  Language *statement string itself* remains free text to Terraform and the
+  API would only reject a semantically malformed statement at `apply` time,
+  which this lab has not yet done (see `## Notes` below).
 
-Would depend on `lab-network-stack` (VCN/subnet) and `lab-nsg-stack`
-(instance) the same way other network-security labs do; standalone otherwise
-— no new dependents downstream.
+**Known unresolved question, flagged rather than guessed:** the exact
+complete grammar of ZPR Policy Language (e.g. the full enum of valid `mode`
+values beyond `audit`, whether `with protocol=` is the correct clause name
+versus something else) was not confirmed against Oracle's own ZPR conceptual
+docs, which returned only high-level text on repeated fetch attempts. If
+`terraform apply` is ever run against this stack, treat the `statements`
+line as the most likely single point of failure and be ready to revise its
+exact wording against the real API error message.
 
 ---
 
@@ -792,3 +824,4 @@ for not-yet-applied dependencies (real values once earlier stacks are applied).
 | `lab-storage-stack` | 3 to add | Placeholder `instance_id` |
 | `lab-oke-stack` | 2 to add | Found and fixed a bug: `node_pool_os_arch = "ARM64"` isn't a valid enum for this provider version — corrected to `AARCH64`. Plan then resolved a live Kubernetes version (`v1.36.1`) and a real ARM64 node image. |
 | `lab-oke-gpu-stack` | not fully verifiable yet | Its GPU image lookup queries `node_pool_option_id = var.cluster_id` directly (not `"all"`), so it needs a real cluster to return image sources — a placeholder `cluster_id` yields `sources = null`, which is expected, not a bug. Fully dry-runnable only after `lab-oke-stack` is applied.
+| `lab-zpr-stack` | 13 to add | Real values (`sandbox` compartment, real tenancy OCID) — standalone, no placeholders needed. First attempt used unnamespaced `security_attribute` strings guessed from MyLearn's UI-level tag syntax; `terraform validate` passed but the syntax didn't match the real API. Corrected after confirming the provider's actual `security_attributes` map format against its doc source, which also surfaced that the namespace/attribute are their own resources (`oci_security_attribute_security_attribute_namespace`/`oci_security_attribute_security_attribute`) not implicit strings. The ZPR Policy Language statement text itself is unverified beyond schema-level string validity — flagged as the most likely failure point if this is ever applied. |
