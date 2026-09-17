@@ -160,7 +160,55 @@ With the full stack applied and both instances' `SshRole` attribute in `mode = e
 
 **This is the single most important finding of this lab:** ZPR's default-deny in `enforce` mode blocks **all** traffic to a tagged resource that isn't explicitly authorized by a matching policy — independent of, and with total priority over, whatever the NSG or security list allow. VM-01 had no ZPR policy authorizing "the internet" (or "my laptop") to reach it at all — only "trusted-source → ssh-target" was ever authorized, which describes VM-01 as a *source*, not a *destination*. The security list explicitly allows `0.0.0.0/0:22` into this subnet, and the NSG doesn't even apply to VM-01 — none of that mattered. This is the CarCo/Science-App lesson (Note 5) made completely concrete: ZPR enforcement doesn't consult NSGs or security lists at all; it's an entirely separate, independent gate that both must be satisfied simultaneously.
 
+**Confirmed authoritatively after the fact — the Console's own "Enable ZPR"
+dialog states this exact enforcement order directly, not just as an
+inference from this lab's test:** *"For resources with security attributes,
+ZPR policy is evaluated first. If ZPR policy permits communication, then
+other controls are evaluated in a layered approach. If ZPR policy doesn't
+allow communication, the request is dropped."* This also confirms the
+default namespace name enabling ZPR creates tenancy-wide — `oracle-zpr` —
+distinct from this lab's own custom `ZprLabRole` namespace (both are valid;
+a tenancy isn't limited to the default). And it directly explains why
+untagged resources elsewhere in the tenancy (every other lab stack) were
+completely unaffected by `oci_zpr_configuration` being enabled: *"Enabling
+ZPR won't affect communication between resources without security
+attributes. ZPR policy is only enforced on resources with security
+attributes."*
+
 **State was restored afterward** — the manual CLI probe was reverted via `terraform apply` (matching declared config exactly, confirmed by a subsequent zero-diff `terraform plan`), so the stack's real state is: both instances back in `SshRole = ..., mode = enforce`, fully ZPR-locked, exactly as declared in `main.tf`.
+
+**Official policy syntax, straight from the Console's own policy builder**
+(Security → Zero Trust Packet Routing → Policies → Add policy statements),
+worth checking against the statement this lab actually applied:
+
+```
+in vcn-network:db VCN allow db-client:app1 endpoints to connect to db-server:app1 endpoints
+
+in vcn-network:db VCN allow app:front-end endpoints with protocol = 'tcp/999-11199' to connect to app:back-end endpoints
+
+in vcn-network:db VCN allow app:front-end endpoints to connect to '192.168.1.1/16'
+```
+
+**A real discrepancy worth flagging, not yet resolved:** this lab's applied
+statement put `with protocol='tcp/22'` at the very end, *after* the
+destination endpoints:
+```
+in ZprLabRole.Network:zpr-lab-vcn VCN allow ZprLabRole.SshRole:trusted-source endpoints to connect to ZprLabRole.SshRole:ssh-target endpoints with protocol='tcp/22'
+```
+Oracle's own second example places `with protocol = ...` **between** the
+source endpoints and `to connect to`:
+`app:front-end endpoints **with protocol = 'tcp/999-11199'** to connect to app:back-end endpoints`.
+This lab's version was accepted by the live API (the policy applied
+successfully), so either both placements are valid ZPR Policy Language, or
+the API is more permissive than the documented/Console-generated
+convention. Not fully resolved — worth retesting with the clause moved to
+match the official placement if this stack is revisited.
+
+Also notable from these examples: protocol supports a **port range**
+(`'tcp/999-11199'`), not just a single port (this lab only exercised
+`'tcp/22'`), and a ZPR statement can mix a tagged endpoint on one side with
+a **plain CIDR** (`'192.168.1.1/16'`) on the other — attribute-to-attribute
+isn't the only supported shape.
 
 - [x] `terraform apply`: fully applied — VCN, subnet, security list, NSG, NSG rule, both instances, ZPR configuration, namespace, attribute, and policy are all live
 - [x] Live proof that ZPR `enforce` mode blocks traffic independent of NSG/security-list state (A5 above)
