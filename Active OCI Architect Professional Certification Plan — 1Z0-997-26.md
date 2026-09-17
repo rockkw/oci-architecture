@@ -74,6 +74,7 @@ Tenant sign in -
 - [x] Configure or diagram Vault, Cloud Guard, Security Zones, logging/audit retention, and a network boundary (NSGs/security lists, WAF or Network Firewall) appropriate to a web workload.
   - [x] [[Lab 4 - OCI Architect Pro Exam - Vault, Guard, Zones, Logging, Network Boundary]]
 - [ ] complete **Module: Network Security** — Security Lists, NSGs, Network Firewall, WAF, Certificates, Load Balancers — covers your NSG build and the WAF-vs-Network-Firewall design decision directly
+  - [x] Zero Trust Packet Routing (ZPR) — see [[Lab 5 - OCI Architect Pro Exam - Zero Trust Packet Routing]] for the hands-on Terraform build (VM-01/VM-02 SSH lockdown, `lab-zpr-stack`, dry-run verified)
   - [ ] **Module: Data Protection** — Vault, encryption keys, secrets, Data Safe — covers your Vault/key build
   - [ ] **Module: Maintaining Security Posture** — Cloud Guard, Security Zones, Monitoring, Logging & Events — covers the diagram/design half of Lab 4 plus your logging/audit retention piece
   - [ ] There's also an **OS and Workload Protection** module (Bastion, vulnerability scanning, OS Management Hub) — not directly asked for in Lab 4, but it's the same territory as Note 8's AWS-translation table, so worth a skim if you have time

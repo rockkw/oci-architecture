@@ -729,7 +729,9 @@ first stated remediation), and a ZPR policy layered on top that holds
 regardless of what the security list or NSG say. See
 [[5. Security — OCI IAM, WAF, Certificates, Vault, Cloud Guard]] for the full
 concept writeup — the Science App and CarCo scenarios this stack's ZPR layer
-is modeled on.
+is modeled on — and [[Lab 5 - OCI Architect Pro Exam - Zero Trust Packet Routing]]
+for this stack's full lab writeup (checklist, verification steps, recall
+exercises).
 
 **Standalone** — its own VCN/subnet, not built on `lab-network-stack` or
 `lab-nsg-stack`, so it has no apply-order dependency on any other stack.
