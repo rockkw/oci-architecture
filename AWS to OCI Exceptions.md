@@ -107,6 +107,13 @@ cert plan as a place where OCI Pro diverges hardest from AWS instincts.)
   worked example: a single mistyped CIDR digit in a hand-authored NSG rule
   went unnoticed through a two-person review process — the exact class of
   error ZPR's attribute model removes structurally.
+  **Cross-VCN confirms this isn't just a same-VPC convenience gap:** AWS
+  security group references are scoped to a single VPC, exactly like an OCI
+  NSG — cross-VPC, AWS also has no choice but to fall back to CIDR ranges,
+  the identical degradation OCI's own NSGs show once traffic crosses a VCN
+  boundary (see the "Two Applications, One Spoke" scenario in Note 5's
+  Cross-VCN ZPR section). Cross-VCN ZPR closes precisely the gap neither
+  cloud's security-group/NSG referencing model can close on its own.
 
 ## Containers (OKE)
 
