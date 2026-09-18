@@ -138,6 +138,75 @@ the sole public entry point), an Object Storage bucket for future backups,
 and a dynamic group + policy granting the instance itself (not a Function)
 instance-principal access to that bucket.
 
+**DESIGN-ONLY addition, not yet applied (this repo's real, already-applied
+`terraform.tfstate` for this stack still reflects the single-instance
+version above — nothing below has run against live infrastructure):**
+restructured from one instance to a 2-node, LB-fronted, HTTPS-via-OCI-
+Certificates design, following the same LB/backend-set/listener pattern
+`lab-lb-stack` and `lab-firewall-stack`'s `web_lb` already use in this repo.
+
+- **Two explicitly-named backend instances** (`mymagnet_1`/`mymagnet_2`,
+  not `count`/`for_each` — matching this file's existing style and
+  `lab-firewall-stack`'s `web_server_1`/`web_server_2`), each an
+  independent, functionally-duplicate MyMagnet install with its own local
+  SQLite DB and **no replication between them**. Accepted risk, not an
+  oversight: the user explicitly chose 2 nodes plus LB session persistence
+  (sticky sessions) over solving real data consistency, since this is a
+  study lab, not production. Neither instance gets its own public IP
+  anymore.
+- **`oci_load_balancer_load_balancer`** is now the sole public entry
+  point, reusing the *same* Reserved Public IP that used to sit directly
+  on the instance's VNIC via its `reserved_ips { id = ... }` block, rather
+  than provisioning a new ephemeral IP — same "stable IP for the DNS A
+  record" property as before, one hop further out.
+- **`oci_load_balancer_backend_set`** uses
+  `session_persistence_configuration { cookie_name = "*" }` for sticky
+  sessions (confirmed argument name/shape against the provider's website
+  docs — mutually exclusive with `lb_cookie_session_persistence_configuration`
+  per that same doc). Health check/backend port is a **flagged
+  uncertainty**: defaulted to `var.backend_port = 80` (nginx's plain-HTTP
+  listener — the one port the original NSG's `0.0.0.0/0:80` rule confirms
+  was actually open), *not* `8080` (`MAGNET_PORT`, which `webserver.py`
+  binds to on `127.0.0.1` only per this stack's own original NSG comment —
+  not reachable from the LB subnet under the current setup). This repo has
+  no visibility into what `setup.sh` (pulled from the external MyMagnet
+  repo at boot) actually configures nginx to listen on — verify against a
+  live instance before ever applying this.
+- **HTTPS listener** on port 443 attaches a cert via `ssl_configuration {
+  certificate_ids = [...] }` — the OCI-Certificates-managed-cert argument,
+  confirmed against the provider's website docs, deliberately not the
+  legacy inline-PEM `certificate_name` pattern. No existing
+  `oci_kms_vault`/`oci_certificates_*` resource was found anywhere else in
+  this repo (grepped `terraform/`), so this stack provisions its own
+  minimal `oci_kms_vault` → `oci_kms_key` → `oci_certificates_management_
+  certificate_authority` (`ROOT_CA_GENERATED_INTERNALLY`) →
+  `oci_certificates_management_certificate` (`ISSUED_BY_INTERNAL_CA`)
+  chain, rather than taking Vault/CA OCIDs as input variables — there's no
+  other stack in this repo to source them from. **Flagged, unverified:**
+  whether a `DEFAULT` (software-protected) vault is sufficient for a
+  Certificates-service CA vs. requiring `VIRTUAL_PRIVATE` (HSM-backed) —
+  not confirmed either way against OCI's own Certificates service docs.
+- **NSG split in two**: `mymagnet` (backend instances — SSH from
+  `var.ssh_allowed_cidr`, app port from `var.lb_subnet_cidr` only, no more
+  direct 0.0.0.0/0 on 80/443) and `mymagnet_lb` (the LB itself — 80/443
+  open to 0.0.0.0/0, attached via the LB's own
+  `network_security_group_ids`, since that attaches at the LB level, not
+  the VNIC level like `oci_core_instance` does).
+- **Dynamic group matching rule** updated to `ANY {instance.id = '...',
+  instance.id = '...'}` to match both instances (previously a single
+  `resource.id`). Multi-`instance.id` `ANY{}` is OCI's documented pattern
+  for matching several specific resources (same structure as Oracle's
+  documented multi-`instance.compartment.id` example) — **flagged as
+  unverified** in this exact multi-`instance.id` form specifically, since
+  no official worked example for that precise variant was found while
+  writing this.
+
+`terraform validate` passed cleanly against provider `oracle/oci` v9.1.0.
+No `terraform plan`/`apply` was run for this addition — a real plan needs
+real compartment/VCN/subnet/tenancy OCIDs this environment doesn't have
+access to (and the sandbox this was written in blocks reading `~/.oci/
+config` anyway); state was left untouched throughout.
+
 **cloud-init (`cloud-init.yaml.tftpl`) does the actual app install and
 config** — clones the repo, runs the existing `deploy/setup.sh` (the
 GitHub-hosted script itself is never edited), then writes real config
@@ -208,8 +277,13 @@ specifically (via `oci_core_vnic_attachments` → `oci_core_private_ips`), not
 the instance ID directly — checked against the Terraform provider docs
 before use, since an earlier draft of this resource block had that wrong.
 
-Depends on: `lab-network-stack` (`vcn_id`, `subnet_id`)
-Outputs: `instance_id`, `public_ip`, `backup_bucket_name`
+Depends on: `lab-network-stack` (`vcn_id`, `subnet_id`, and — per the
+DESIGN-ONLY addition above — `lb_subnet_id`/`lb_subnet_cidr` for the LB)
+Outputs (single-instance, applied version): `instance_id`, `public_ip`,
+`backup_bucket_name`
+Outputs (DESIGN-ONLY LB version, not yet applied): `instance_1_id`,
+`instance_2_id`, `load_balancer_public_ip`, `load_balancer_id`,
+`backup_bucket_name`, `certificate_authority_id`, `certificate_id`
 
 ---
 

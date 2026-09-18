@@ -35,3 +35,38 @@ variable "backup_bucket_name_override" {
   type    = string
   default = ""
 }
+
+# --- Added for the LB + 2-node + OCI Certificates redesign (DESIGN ONLY,
+# not yet applied — see LABS.md) ---
+
+# Subnet the LB itself lives in. Separate from var.subnet_id (the backend
+# instances' subnet) to match lab-lb-stack/lab-firewall-stack's pattern in
+# this repo of the LB having its own subnet — pass the same OCID as
+# var.subnet_id if a single-subnet layout is preferred instead, OCI doesn't
+# require them to differ.
+variable "lb_subnet_id" { type = string }
+
+# CIDR of the LB's subnet, used only in the mymagnet NSG's ingress rule so
+# the backend port is reachable from the LB but not from 0.0.0.0/0 directly.
+# Kept as a separate variable rather than derived from lb_subnet_id, since
+# this stack (matching its existing style) takes subnet identity as input
+# rather than looking up a data.oci_core_subnet for its CIDR.
+variable "lb_subnet_cidr" { type = string }
+
+# Port the LB's backend set/health checker hits on each instance.
+# UNVERIFIED — see the flagged comment on oci_load_balancer_backend_set.
+# mymagnet in main.tf. Defaulting to 80 (nginx's plain-HTTP listener, the
+# one port the original NSG's now-removed 0.0.0.0/0:80 rule confirms was
+# actually open), NOT 8080 (MAGNET_PORT, which webserver.py binds to on
+# 127.0.0.1 only per the original NSG comment — not reachable from the LB
+# subnet at all under the current setup).
+variable "backend_port" {
+  type    = number
+  default = 80
+}
+
+# Common name (CN) for the OCI Certificates leaf cert and its issuing CA's
+# subject — should match the DNS A record the Reserved Public IP
+# (oci_core_public_ip.mymagnet) resolves to, same as the original single-
+# instance design's implied Certbot CN would have.
+variable "cert_common_name" { type = string }

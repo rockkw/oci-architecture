@@ -156,6 +156,66 @@ cert plan as a place where OCI Pro diverges hardest from AWS instincts.)
   consuming it — OCI's guard is a structural difference, not just a stricter
   default. Revocation, by contrast, both clouds treat as taking effect
   immediately.
+- **Four named use cases, each a distinct architecture — worth knowing by
+  name for scenario questions:**
+  1. **Public Certificate** — an imported public cert installed directly on
+     the Load Balancer; the LB terminates TLS for external clients using a
+     cert Certificates Service stores/manages but didn't necessarily issue
+     itself.
+  2. **Private Certificate** — a private CA's chain of trust is installed on
+     employee devices, and a cert from that same private CA is installed on
+     the LB — internal-only trust, no public CA involved at all. AWS's
+     nearest equivalent composes this from Private CA (issuance) + manual/MDM
+     device trust-store distribution; OCI frames it as one coherent use case
+     under one service.
+  3. **Private Certificate — mTLS** — the same private CA chain, but *both*
+     sides present a cert: every VM behind the LB has its own SSL cert, and
+     the LB itself presents a cert back to the VMs — mutual authentication
+     end to end, not just client-to-LB TLS termination. The diagram shows SSL
+     certs on the LB, both backend VMs, *and* the database system — the whole
+     internal path is mutually authenticated, not just the internet-facing
+     hop.
+  4. **Code Signing** — a developer's private key + cert are used to sign an
+     artifact, which a *different* party (e.g. an end user's device)
+     verifies against the same cert/CA — a fundamentally different
+     trust-verification use case than any TLS scenario above, since nothing
+     here is about encrypting a live connection. AWS's analog here is Signer,
+     a wholly separate service from ACM — worth noting OCI folds signing
+     verification into the same Certificates concept space rather than a
+     dedicated product.
+- **Provisioning is a strict three-step chain across three services, not a
+  single-service action.** MyLearn's own hands-on scenario for Use Case 2
+  (Private Certificate on an LB) is explicit about the order: (1) create a
+  Master Encryption Key **in OCI Vault** first, (2) create a Certificate
+  Authority and a Certificate **in OCI Certificates**, using that key, (3)
+  attach the certificate **to the Load Balancer**. A cert cannot exist
+  independent of a KMS-managed key the way an ACM public cert can (ACM
+  generates and holds its own key material internally with no user-visible
+  KMS dependency for the common case) — OCI's Certificates service is
+  structurally downstream of Vault/KMS for private CA issuance, not a
+  self-contained key-generation service in this flow.
+- **The Certificate Authority itself needs its own IAM identity — a real
+  tenancy example confirms this isn't hypothetical.** A live Console dynamic
+  groups list (Identity domain → Dynamic groups) showed a group literally
+  named for this purpose: `OCI-SM-CA-DG`, described as "Dynamic Group for the
+  Certificate Authority." A private CA evidently needs resource-principal-
+  style access (e.g. to reach its Vault key) the same way a compute instance
+  does — dynamic-group membership isn't only for instances/functions the way
+  AWS instance profiles are conceptually scoped to compute; OCI's dynamic
+  group model extends to non-compute resources like a Certificate Authority
+  needing to authenticate to another service on its own behalf.
+- **Console "Create Key" default is Protection Mode: HSM, not Software.** A
+  live Vault → Master Encryption Keys → Create Key screen defaults the
+  Protection Mode dropdown to **HSM** (Key Shape: RSA, 4096 bits shown as the
+  example) — the stronger/more expensive option is the Console's own default,
+  not opt-in. Combined with the earlier-confirmed "Only HSM Private Keys
+  provided through OCI KMS supported" line from the Certificate Authority
+  slide, this suggests the Certificates service's private-CA flow may push
+  toward HSM keys specifically rather than Software-protected ones being a
+  fully equal alternative — worth confirming directly if a scenario question
+  turns on Software vs. HSM protection mode for a CA's root key specifically
+  (not yet confirmed whether Software-protected keys are actually rejected by
+  Certificates, or just less emphasized by the Console default).
 
 ## Containers (OKE)
 
