@@ -138,12 +138,15 @@ the sole public entry point), an Object Storage bucket for future backups,
 and a dynamic group + policy granting the instance itself (not a Function)
 instance-principal access to that bucket.
 
-**DESIGN-ONLY addition, not yet applied (this repo's real, already-applied
-`terraform.tfstate` for this stack still reflects the single-instance
-version above — nothing below has run against live infrastructure):**
-restructured from one instance to a 2-node, LB-fronted, HTTPS-via-OCI-
-Certificates design, following the same LB/backend-set/listener pattern
+**APPLIED — this stack was actually restructured from one instance to a
+2-node, LB-fronted design and applied against real infrastructure (the
+original single-instance stack was `terraform destroy`'d first, then this
+design `apply`'d fresh), following the same LB/backend-set/listener pattern
 `lab-lb-stack` and `lab-firewall-stack`'s `web_lb` already use in this repo.
+Real, mixed results — the network/LB/compute layer succeeded; the HTTPS/
+Certificates layer and end-to-end app reachability did not. See "Real apply
+results and two unresolved blockers" below before assuming this lab works
+end to end.
 
 - **Two explicitly-named backend instances** (`mymagnet_1`/`mymagnet_2`,
   not `count`/`for_each` — matching this file's existing style and
@@ -163,15 +166,12 @@ Certificates design, following the same LB/backend-set/listener pattern
   `session_persistence_configuration { cookie_name = "*" }` for sticky
   sessions (confirmed argument name/shape against the provider's website
   docs — mutually exclusive with `lb_cookie_session_persistence_configuration`
-  per that same doc). Health check/backend port is a **flagged
-  uncertainty**: defaulted to `var.backend_port = 80` (nginx's plain-HTTP
-  listener — the one port the original NSG's `0.0.0.0/0:80` rule confirms
-  was actually open), *not* `8080` (`MAGNET_PORT`, which `webserver.py`
-  binds to on `127.0.0.1` only per this stack's own original NSG comment —
-  not reachable from the LB subnet under the current setup). This repo has
-  no visibility into what `setup.sh` (pulled from the external MyMagnet
-  repo at boot) actually configures nginx to listen on — verify against a
-  live instance before ever applying this.
+  per that same doc). Health check/backend port: `var.backend_port = 80`
+  (nginx's plain-HTTP listener), confirmed **live** before the original
+  single-instance stack was torn down (`curl http://<old public_ip>/`
+  returned 200 on port 80; 443 and 8080 both timed out — 443 wasn't
+  actually serving TLS despite the NSG allowing it, and 8080/`MAGNET_PORT`
+  is 127.0.0.1-only). Correct default, not the blocker below.
 - **HTTPS listener** on port 443 attaches a cert via `ssl_configuration {
   certificate_ids = [...] }` — the OCI-Certificates-managed-cert argument,
   confirmed against the provider's website docs, deliberately not the
@@ -182,10 +182,10 @@ Certificates design, following the same LB/backend-set/listener pattern
   certificate_authority` (`ROOT_CA_GENERATED_INTERNALLY`) →
   `oci_certificates_management_certificate` (`ISSUED_BY_INTERNAL_CA`)
   chain, rather than taking Vault/CA OCIDs as input variables — there's no
-  other stack in this repo to source them from. **Flagged, unverified:**
-  whether a `DEFAULT` (software-protected) vault is sufficient for a
-  Certificates-service CA vs. requiring `VIRTUAL_PRIVATE` (HSM-backed) —
-  not confirmed either way against OCI's own Certificates service docs.
+  other stack in this repo to source them from. **This entire chain is the
+  first of the two unresolved blockers below — the CA never successfully
+  reaches `ACTIVE`, so `certificate_ids` never resolves and the HTTPS
+  listener was never actually created.**
 - **NSG split in two**: `mymagnet` (backend instances — SSH from
   `var.ssh_allowed_cidr`, app port from `var.lb_subnet_cidr` only, no more
   direct 0.0.0.0/0 on 80/443) and `mymagnet_lb` (the LB itself — 80/443
@@ -201,11 +201,98 @@ Certificates design, following the same LB/backend-set/listener pattern
   no official worked example for that precise variant was found while
   writing this.
 
-`terraform validate` passed cleanly against provider `oracle/oci` v9.1.0.
-No `terraform plan`/`apply` was run for this addition — a real plan needs
-real compartment/VCN/subnet/tenancy OCIDs this environment doesn't have
-access to (and the sandbox this was written in blocks reading `~/.oci/
-config` anyway); state was left untouched throughout.
+`terraform validate` passed cleanly against provider `oracle/oci` v9.2.0
+(upgraded from v9.1.0 mid-investigation, see below). This design **was**
+applied against real infrastructure: the original single-instance stack was
+destroyed first (`terraform destroy`, 10 resources), then this design was
+applied fresh (`terraform apply`, 24 resources planned). 23 of those 24
+succeeded on the first pass — both instances, the LB, the HTTP listener,
+both NSGs, the KMS vault/key, the dynamic group, the policy, the backup
+bucket. Only `oci_core_vtap`-style CA/cert/HTTPS-listener chain failed; see
+below.
+
+### Real apply results and two unresolved blockers
+
+**Blocker 1 — OCI Certificates CA creation, root cause still unresolved.**
+`oci_certificates_management_certificate_authority.mymagnet` never
+successfully applies. Investigation history, in order:
+
+1. First failure: `400-InvalidParameter, "Unable to process JSON input"`
+   from `terraform apply`. Traced (via `terraform show -json` on the saved
+   plan) to `timeadd(timestamp(), "8760h")` — a genuine Terraform gotcha:
+   `timestamp()` is unknown at plan time, and the resulting value was
+   silently absent from the planned request body rather than deferred.
+   **Fixed**: replaced with a static literal via a new `var.cert_valid_until`
+   variable. Confirmed via `terraform show -json` that the value was
+   correctly present in the plan after the fix — but the apply still failed
+   with the identical error.
+2. Upgraded the provider 9.1.0 → 9.2.0 on the theory this was a provider
+   serialization bug. Same error, unchanged.
+3. Bisected directly against the raw OCI API (bypassing both Terraform and
+   the OCI CLI's own SDK wrapper) with `oci certs-mgmt certificate-authority
+   create-root-ca-by-generating-config-details --from-json`, adding fields
+   back one at a time from a minimal payload. Found the real (different)
+   bug: `timeOfValidityNotAfter` requires **millisecond precision** —
+   `2027-09-18T17:14:17Z` (bare seconds, otherwise fully valid RFC3339) is
+   silently rejected; `2027-09-18T17:14:17.000Z` succeeds. Not documented
+   as a requirement anywhere in the provider docs, the CLI's own generated
+   example values, or the API reference fetched during this investigation.
+   **Fixed** `var.cert_valid_until` to include explicit `.000` milliseconds.
+4. Re-applied via Terraform with the corrected value (confirmed present and
+   millisecond-precise in the plan) — **still failed, identical error.**
+   This means the Terraform provider is doing something to the timestamp
+   between HCL and the wire that the raw CLI doesn't do — a real,
+   unconfirmed provider bug, distinct from the two fixes above.
+5. Created the CA directly via the OCI CLI instead (bypassing Terraform
+   entirely) using the exact millisecond-precise payload — this time the
+   API *accepted* the request and returned `CREATING`. **But the CA then
+   settled into `FAILED`** (confirmed by polling `lifecycle-state`, not by
+   trusting the initial response) with `lifecycle_details: "Authorization
+   failed or requested resource not found: Key Id <the KMS key's OCID>."`
+   — a completely different, IAM-shaped problem the earlier "Unable to
+   process JSON input" error never surfaced.
+6. Tried two real IAM policies against the live tenancy to fix the
+   authorization gap, both in the home region (`us-ashburn-1`, required for
+   all IAM writes — see [[OCI propagation delays]]), each confirmed
+   propagated to `us-phoenix-1` before retrying:
+   - `Allow service certificates to use keys in compartment id <compartment>`
+     — failed, identical authorization error.
+   - `Allow service certificates to use key-delegate in compartment id
+     <compartment>` — matches Oracle's documented semantics for a service
+     acting on a customer's key on the customer's behalf (`key-delegate`,
+     not `keys`, per the Vault policy reference) — **also failed, identical
+     error.**
+   Both policies were deleted afterward since neither fixed the problem.
+
+**Root cause remains unresolved.** Three real, confirmed, separately-fixed
+bugs were found and corrected along the way (the `timestamp()` gotcha, the
+millisecond-precision requirement, the provider upgrade ruled out as
+irrelevant) — but the underlying `FAILED`/"Authorization failed... Key Id"
+error persisted through all of them, including two different IAM policy
+grants that should have addressed it per Oracle's own documented policy
+model. Candidates not yet tested: whether `vault_type = "DEFAULT"` (used
+here) is actually incompatible with Certificates-service CA issuance and a
+`VIRTUAL_PRIVATE` (dedicated HSM) vault is required instead; whether the
+policy needs `where target.key.id = '...'` scoping rather than a
+compartment-wide grant; whether the OCI Console UI surfaces a clearer error
+than either the CLI or Terraform does. **The HTTPS listener, and both
+`oci_certificates_management_*` resources, remain in `main.tf` as correct,
+schema-valid Terraform — they are not in state and were never created.**
+
+**Blocker 2 — the app itself is not reachable through the LB, separate
+from Blocker 1.** `curl http://<load_balancer_public_ip>/` returns `502`.
+`oci lb backend-set-health get` shows both backends in `CRITICAL` state
+with `health-check-status: CONNECT_FAILED` on port 80 — the LB cannot even
+establish a TCP connection to either instance, despite the health checker
+config itself being correct (port 80, HTTP, path `/`, matching what was
+confirmed live against the original single-instance deployment before
+teardown). Both instances show `lifecycle-state: RUNNING` and have been up
+for 2+ hours — long enough for cloud-init to have finished under normal
+conditions. Not yet diagnosed further (would need SSH into a live instance
+to check cloud-init/setup.sh logs and confirm nginx actually started) —
+flagged here rather than guessed. **Next step for a future session:** SSH
+in with the stack's generated `lab-mymagnet-key` (scratchpad-only, not
+committed) and check `/var/log/cloud-init-output.log`.
 
 **cloud-init (`cloud-init.yaml.tftpl`) does the actual app install and
 config** — clones the repo, runs the existing `deploy/setup.sh` (the

@@ -217,6 +217,36 @@ cert plan as a place where OCI Pro diverges hardest from AWS instincts.)
   (not yet confirmed whether Software-protected keys are actually rejected by
   Certificates, or just less emphasized by the Console default).
 
+## Web Application Firewall
+
+- **OCI WAF has no custom-rule authoring — AWS WAF does.** MyLearn's own
+  "WAF and Network Firewall: Who Inspects What" comparison table states it
+  outright under Custom Rules: Network Firewall — "Supported"; Web
+  Application Firewall — **"Not supported. Relies on ~490 managed rules +
+  JMESPath conditions."** AWS WAF's core model is the opposite: you author
+  arbitrary custom rule statements (string/regex match, rate-based rules,
+  IP sets, logical AND/OR/NOT compositions) directly, with AWS Managed Rules
+  as an optional *addition* on top, not the only mechanism available. OCI
+  WAF inverts this — the managed rule catalog (~490 rules) is the actual
+  detection surface, and JMESPath expressions only let you write
+  *conditions* that select/tune which managed rules apply to which
+  requests, not net-new detection logic of your own. This is a real
+  capability gap, not just a different UI for equivalent power — a scenario
+  requiring genuinely custom WAF logic (a rule matching some proprietary
+  header/business-logic pattern no managed rule covers) has no OCI WAF-native
+  answer the way it would trivially in AWS WAF.
+- **Where the analogy holds:** both are Layer 7-only (HTTP/HTTPS), both sit
+  in front of a load balancer/edge rather than inspecting arbitrary routed
+  traffic (OCI: Flexible LB or Edge policy; AWS: ALB/CloudFront/API Gateway),
+  and both target the same named threat categories — OWASP Top 10, L7
+  floods, credential stuffing, bot scraping — per the same comparison table.
+  The decision-surface framing is identical too: URL path, headers, method,
+  body, rate, cookies, bot signals — none of that differs meaningfully from
+  AWS WAF's own inspection surface.
+- See [[5. Security — OCI IAM, WAF, Certificates, Vault, Cloud Guard]] for
+  the fuller WAF/Network Firewall side-by-side and the Lumen Retail scenario
+  this table and the "packet filtering vs. Layer 7" framing both come from.
+
 ## Containers (OKE)
 
 - **ECS has no OCI equivalent — orchestration means Kubernetes, full stop.**

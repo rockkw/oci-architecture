@@ -302,23 +302,13 @@ resource "oci_load_balancer_backend_set" "mymagnet" {
     disable_fallback = false
   }
 
-  # Health check port: TODO/UNVERIFIED — see flagged comment below.
-  # MAGNET_PORT=8080 (cloud-init.yaml.tftpl) is webserver.py's OWN bind
-  # port, but main.tf's original NSG comment states webserver.py binds to
-  # 127.0.0.1 only and nginx is the sole entry point — meaning 8080 is NOT
-  # reachable from the LB subnet at all under the current nginx/iptables
-  # setup, only nginx's own listening port is. setup.sh (pulled from the
-  # external MyMagnet repo at boot, not present in this repo) presumably
-  # configures nginx to reverse-proxy some public port to 127.0.0.1:8080,
-  # but this repo has no visibility into which port nginx itself listens on
-  # after setup.sh runs — likely 80 (proxied to by the LB's HTTP listener)
-  # given the original NSG opened 80/443 directly to 0.0.0.0/0. Defaulting
-  # the health check AND backend port to 80 (nginx's plain-HTTP listener)
-  # since that's the one port this repo can confirm setup.sh opens up, per
-  # the "Known unresolved question, flagged rather than guessed" pattern
-  # used elsewhere in this repo (see lab-zpr-stack in LABS.md) — verify
-  # against the actual nginx config setup.sh writes (SSH into a live
-  # instance) before trusting this for a real apply.
+  # Health check port: CONFIRMED against the live instance before this
+  # redesign was applied. `curl http://<public_ip>/` (port 80) returned
+  # HTTP 200; the same check against 443 and 8080 both timed out — 443 isn't
+  # actually serving TLS despite the NSG allowing it (Certbot apparently
+  # never ran), and 8080 is MAGNET_PORT, webserver.py's own 127.0.0.1-only
+  # bind, never externally reachable. nginx's plain-HTTP listener on 80 is
+  # the real, confirmed entry point setup.sh configures.
   health_checker {
     protocol = "HTTP"
     port     = var.backend_port
@@ -424,18 +414,47 @@ resource "oci_certificates_management_certificate_authority" "mymagnet" {
       common_name = var.cert_common_name
     }
 
+    # REAL BUG FOUND AND FIXED (see var.cert_valid_until in variables.tf for
+    # the full story): OCI Certificates Management's timeOfValidityNotAfter
+    # requires MILLISECOND precision — a bare-seconds RFC3339 value fails
+    # with 400-InvalidParameter "Unable to process JSON input" even though
+    # it's otherwise fully valid RFC3339. var.cert_valid_until must be
+    # supplied with explicit .000 milliseconds (e.g.
+    # 2027-09-18T17:24:03.000Z), confirmed by bisecting directly against the
+    # real API (bypassing Terraform and the OCI CLI's SDK wrapper) since the
+    # error message itself never named the actual field or format issue.
     validity {
-      time_of_validity_not_after = timeadd(timestamp(), "8760h") # ~1 year
+      time_of_validity_not_after = var.cert_valid_until
     }
   }
 
-  # UNVERIFIED: whether a vault of vault_type = "DEFAULT" (software-
-  # protected keys) is sufficient for a Certificates-service CA, or whether
-  # this requires a VIRTUAL_PRIVATE (HSM-backed) vault specifically — the
-  # provider docs fetched for this change didn't confirm a hard requirement
-  # either way, and OCI's own Certificates service documentation (not
-  # fetched here) may. Flagged per this repo's "flagged rather than
-  # guessed" convention rather than asserting DEFAULT is definitely fine.
+  # BLOCKED, NOT YET RESOLVED — real, reproducible failure against this
+  # exact key, confirmed multiple times: the CA reaches lifecycle_state
+  # FAILED with lifecycle_details "Authorization failed or requested
+  # resource not found: Key Id <this key's OCID>." This is NOT the
+  # timestamp bug above (fixed and confirmed separately) — it reproduces
+  # even with a fully correct, schema-valid payload sent directly to the
+  # raw API (bypassing Terraform and the OCI CLI's own SDK wrapper).
+  #
+  # Two IAM policies were tried against the real tenancy and BOTH failed to
+  # fix it, then were removed again (this stack's own oci_identity_policy
+  # resource above is unrelated — these were separate, out-of-band policies
+  # tested directly via `oci iam policy create`, never added to this file):
+  #   1. Allow service certificates to use keys in compartment id <compartment>
+  #   2. Allow service certificates to use key-delegate in compartment id <compartment>
+  # (2) matches Oracle's own documented semantics for a service using a
+  # customer's key on the customer's behalf (key-delegate, not keys) and
+  # was expected to fix this — it did not. Both were given time to
+  # propagate to the home region before retrying, ruling out a simple
+  # propagation-delay explanation.
+  #
+  # vault_type = "DEFAULT" (see oci_kms_vault.mymagnet below) may itself be
+  # the real blocker (untested: a VIRTUAL_PRIVATE/HSM-dedicated vault was
+  # never tried) — or there's a policy clause/scoping this wasn't correct
+  # yet (e.g. requiring `where target.key.id = '...'` rather than a
+  # compartment-wide grant), or something else entirely. Root cause is
+  # UNRESOLVED as of this comment. See terraform/LABS.md's lab-mymagnet-stack
+  # entry for the full investigation writeup before spending more time here.
 }
 
 resource "oci_certificates_management_certificate" "mymagnet" {
@@ -451,8 +470,9 @@ resource "oci_certificates_management_certificate" "mymagnet" {
       common_name = var.cert_common_name
     }
 
+    # Same timestamp() fix as the CA above — see that resource's comment.
     validity {
-      time_of_validity_not_after = timeadd(timestamp(), "8760h") # ~1 year
+      time_of_validity_not_after = var.cert_valid_until
     }
   }
 }
