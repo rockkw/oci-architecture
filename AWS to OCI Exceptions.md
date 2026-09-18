@@ -115,6 +115,48 @@ cert plan as a place where OCI Pro diverges hardest from AWS instincts.)
   Cross-VCN ZPR section). Cross-VCN ZPR closes precisely the gap neither
   cloud's security-group/NSG referencing model can close on its own.
 
+## Certificates
+
+- **OCI Certificates merges what AWS splits into two products.** AWS separates
+  public/private cert issuance+renewal (ACM, free when attached to integrated
+  AWS services) from CA hierarchy management (AWS Private CA, billed per
+  CA-month + per-cert). OCI Certificates folds both — CA/CA-bundle management
+  *and* cert issuance/storage/renewal/revocation — into one service, and
+  MyLearn states it as free of cost outright, with no separate "you need a
+  paid private CA product" split to reason about. See
+  [[5. Security — OCI IAM, WAF, Certificates, Vault, Cloud Guard]].
+- **Both natively integrate with their load balancer/gateway layer** (OCI
+  Load Balancer + API Gateway ↔ AWS ALB/NLB/CloudFront) so a cert attaches
+  without manual installation on compute — this part of the analogy holds
+  cleanly, unlike most entries in this note.
+- **Private-key exportability: same restriction as ACM, confirmed.** MyLearn's
+  "Certificate Authority" slide states outright that "OCI Certificate service
+  has no access to read customer's private key" — the same never-leaves-the-
+  service guarantee ACM gives for its own issued public certs. Not a
+  difference after all; both clouds keep the private key inside the managed
+  service's boundary.
+- **HSM-backed keys require going through OCI KMS specifically** — OCI
+  Certificates itself doesn't hold HSM keys directly; "Only HSM Private Keys
+  provided through OCI KMS supported" per the same slide. This is a structural
+  coupling AWS doesn't have in the same shape: ACM's HSM-backed private CA
+  keys are managed inside AWS Private CA itself, not handed off to a separate
+  KMS-like service the way OCI Certificates depends on OCI KMS.
+- **Supported algorithms are narrower and explicitly enumerated:** RSA_2048/
+  RSA_4096 and ECDSA_P256/ECDSA_P384 for keys; SHA256/384/512 paired WITH_RSA
+  or WITH_ECDSA for signing. Worth knowing as closed lists (not "whatever the
+  underlying crypto library supports") if a scenario question tests an
+  unsupported algorithm/key-size combination.
+- **Deletion is use-guarded — a real safety rail ACM doesn't name explicitly.**
+  MyLearn's Integrations slide states "no accidental deletion of used
+  certificate" as an explicit product behavior: OCI blocks deleting a
+  certificate that's actively attached/in-use, rather than deleting it
+  outright and leaving the consuming Load Balancer/API Gateway resource
+  broken. ACM allows deleting an in-use cert (with only a console/CLI
+  warning), which can silently break TLS termination on whatever was
+  consuming it — OCI's guard is a structural difference, not just a stricter
+  default. Revocation, by contrast, both clouds treat as taking effect
+  immediately.
+
 ## Containers (OKE)
 
 - **ECS has no OCI equivalent — orchestration means Kubernetes, full stop.**

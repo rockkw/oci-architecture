@@ -18,8 +18,9 @@ lab-network-stack
         ├── lab-oke-app-stack (needs lab-oke-stack's cluster_id, dependency-only)
         └── lab-oke-gpu-stack (needs lab-oke-stack's cluster_id)
 
-lab-func-stack   (standalone — only depends on lab-network-stack's subnet)
-lab-zpr-stack    (standalone — own VCN/subnet, no dependency on any other stack)
+lab-func-stack       (standalone — only depends on lab-network-stack's subnet)
+lab-zpr-stack        (standalone — own VCN/subnet, no dependency on any other stack)
+lab-firewall-stack   (standalone — own VCN/subnet, no dependency on any other stack)
 ```
 
 Apply order: `lab-network-stack` → `lab-nsg-stack` → everything else, in any order.
@@ -796,6 +797,65 @@ docs, which returned only high-level text on repeated fetch attempts. If
 line as the most likely single point of failure and be ready to revise its
 exact wording against the real API error message.
 
+### lab-firewall-stack
+
+Network Firewall in-line + out-of-band inspection, provisioned entirely via
+Terraform and **applied and verified against real OCI** (not just dry-run).
+Mirrors the MyLearn diagram exactly: a Consumer VCN with five subnets
+(Application, Web-LB, Firewall, VTAP-Target-NLB, Network-Analytics), a Web LB
+fronting two web-server instances, a Network Firewall sitting in its own
+subnet handling both flows, a VTAP mirroring the Web-LB's live traffic to a
+Network Load Balancer, and a Wireshark instance as the out-of-band flow's
+final offline-analysis destination. See
+[[5. Security — OCI IAM, WAF, Certificates, Vault, Cloud Guard]] for the full
+four-stage packet-pipeline writeup (Decryption → Security → Tunnel Inspection
+→ NAT), the SNAT rationale, VXLAN encapsulation mechanics, and the tunnel
+inspection two-stage handoff this stack's policy resources implement.
+
+**Standalone** — its own VCN/subnet, no apply-order dependency on any other
+stack.
+
+Outputs: `web_lb_public_ip`, `web_server_1_private_ip`, `web_server_2_private_ip`
+
+**Applied resource count: 30**, confirmed via `terraform state list` and
+independently verified against the live OCI API (not just Terraform's local
+state) — `oci network-firewall network-firewall get` returns
+`lifecycle-state: ACTIVE` for the firewall itself, and
+`oci network vtap get` confirms `is-vtap-enabled: true`,
+`lifecycle-state: AVAILABLE` for the VTAP.
+
+**Real gotchas confirmed against the live API, not just provider docs:**
+
+1. **Route tables cannot take a Network Firewall's OCID directly.** OCI
+   auto-creates a private IP object for the firewall when it's provisioned
+   into its subnet; `network_entity_id` on a route rule only accepts
+   gateway/private-IP-shaped OCIDs (DRG/IGW/NAT/SGW/LPG/Private IP — no
+   "Network Firewall" target type), so the firewall's own private IP has to
+   be looked up via `data.oci_core_private_ips`, not referenced as a
+   resource attribute.
+2. **`nat_configuration { must_enable_private_nat = false }` is a required
+   block**, not optional, on `oci_network_firewall_network_firewall`.
+3. **A tunnel inspection rule's `condition` block only accepts
+   `destination_address`/`source_address` (address-list names) — no
+   `protocol` field inside it.** `protocol` is top-level on the resource
+   itself (currently only `"VXLAN"` is valid), separate from the match
+   condition.
+4. **Valid tunnel inspection `action` values: `INSPECT` or
+   `INSPECT_AND_CAPTURE_LOG`** — matches the Console's "Inspect and capture
+   log" dropdown option exactly.
+5. **`oci_core_vtap` rejects `is_vtap_enabled = true` at creation outright** —
+   confirmed by a real `terraform apply` failure: `400-InvalidParameter, VTap
+   cannot be enabled at creation`. The real OCI API requires creating the
+   VTAP disabled first, then a separate `UpdateVtap` call to enable it. Fixed
+   with a two-phase apply: create with `is_vtap_enabled = false`
+   (`-target=oci_core_vtap.web_lb_vtap`), then flip the config to `true` and
+   re-apply, which Terraform correctly resolves as an in-place update rather
+   than a replacement. This is the one resource in the whole 30-resource plan
+   that couldn't be created in a single `apply` — every other resource
+   (including the Network Firewall itself, which took **36m38s** to reach
+   `ACTIVE` — by far the slowest single resource in any lab stack here)
+   applied cleanly on the first pass.
+
 ---
 
 ## Notes
@@ -827,3 +887,4 @@ for not-yet-applied dependencies (real values once earlier stacks are applied).
 | `lab-oke-stack` | 2 to add | Found and fixed a bug: `node_pool_os_arch = "ARM64"` isn't a valid enum for this provider version — corrected to `AARCH64`. Plan then resolved a live Kubernetes version (`v1.36.1`) and a real ARM64 node image. |
 | `lab-oke-gpu-stack` | not fully verifiable yet | Its GPU image lookup queries `node_pool_option_id = var.cluster_id` directly (not `"all"`), so it needs a real cluster to return image sources — a placeholder `cluster_id` yields `sources = null`, which is expected, not a bug. Fully dry-runnable only after `lab-oke-stack` is applied.
 | `lab-zpr-stack` | 13 to add | Real values (`sandbox` compartment, real tenancy OCID) — standalone, no placeholders needed. First attempt used unnamespaced `security_attribute` strings guessed from MyLearn's UI-level tag syntax; `terraform validate` passed but the syntax didn't match the real API. Corrected after confirming the provider's actual `security_attributes` map format against its doc source, which also surfaced that the namespace/attribute are their own resources (`oci_security_attribute_security_attribute_namespace`/`oci_security_attribute_security_attribute`) not implicit strings. The ZPR Policy Language statement text itself is unverified beyond schema-level string validity — flagged as the most likely failure point if this is ever applied. |
+| `lab-firewall-stack` | **Applied**: 30 added, 0 errors (after one fix) | `terraform validate`/`plan` passed cleanly on the first attempt — config was schema-correct throughout. `terraform apply` itself hit one real API-level rejection `terraform plan` couldn't have caught: `oci_core_vtap` with `is_vtap_enabled = true` fails at creation (`400-InvalidParameter, VTap cannot be enabled at creation`), since the real API requires create-disabled-then-enable. Fixed with a two-phase apply (create `false`, flip to `true`, re-apply). Every other resource, including the Network Firewall itself (36m38s to `ACTIVE`), applied on the first pass. Independently verified against the live API post-apply via `oci network-firewall network-firewall get` and `oci network vtap get`, not just Terraform's own state. |
