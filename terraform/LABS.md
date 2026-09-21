@@ -279,15 +279,13 @@ than either the CLI or Terraform does. **The HTTPS listener, and both
 `oci_certificates_management_*` resources, remain in `main.tf` as correct,
 schema-valid Terraform — they are not in state and were never created.**
 
-**Blocker 2 — the app itself is not reachable through the LB, separate
-from Blocker 1. ROOT CAUSE FOUND, fix written but NOT applied.**
-`curl http://<load_balancer_public_ip>/` returns `502`.
-`oci lb backend-set-health get` shows both backends in `CRITICAL` state
-with `health-check-status: CONNECT_FAILED` on port 80 — the LB cannot even
-establish a TCP connection to either instance, despite the health checker
-config itself being correct (port 80, HTTP, path `/`, matching what was
-confirmed live against the original single-instance deployment before
-teardown).
+**Blocker 2 — RESOLVED.** The app is reachable through the LB and serving
+real content (`curl http://137.131.32.68/` returns `200` with the actual
+Magnet Library HTML, not an error page). Originally: `curl` returned `502`
+and `oci lb backend-set-health get` showed both backends `CRITICAL` with
+`health-check-status: CONNECT_FAILED` on port 80 — the LB couldn't even
+establish a TCP connection to either instance, despite a correct health
+checker config (port 80, HTTP, path `/`).
 
 **Diagnosis path.** No bastion, no public IP on either instance, so direct
 SSH isn't possible. `oci instance-agent command create` (Run Command) was
@@ -367,20 +365,40 @@ which must stay IGW/public-IP-capable for the LB) and pointed both
 at it instead of the old `var.subnet_id` (left declared but now unused, for
 tfvars/CI backward-compat). `terraform validate` passes.
 
-**Deliberately NOT applied automatically.** `subnet_id` isn't mutable
-in-place on `oci_core_instance` — changing it forces replacement of both
-instances: new private IPs (breaking this doc's own "known-good facts" for
-`10.0.1.66`/`10.0.1.251`), an `oci_load_balancer_backend` update to match,
-and fresh (empty) per-instance SQLite state, since neither instance has
-been backed up. That's a real, visible change to currently-running
-infrastructure beyond "restart a service, re-run a failed step, open a
-port" — left for a human-approved `terraform apply -target=` (scoped to
-just the two instances + their LB backends, not a full reapply) rather
-than run autonomously. **Next step for a future session (or the user):**
-review the diff, then something like
-`terraform apply -target=oci_core_instance.mymagnet_1 -target=oci_core_instance.mymagnet_2 -target=oci_load_balancer_backend.mymagnet_1 -target=oci_load_balancer_backend.mymagnet_2`,
-then re-verify `curl http://<load_balancer_public_ip>/` returns `200` and
-`oci lb backend-set-health get` shows both backends `OK`.
+**Applied, with the user's explicit approval** (this was deliberately held
+back from autonomous apply — `subnet_id` isn't mutable in-place on
+`oci_core_instance`, so the fix forces replacement of both instances: new
+private IPs, an `oci_load_balancer_backend` update to match, and fresh
+per-instance SQLite state, a real visible change beyond "restart a
+service"). Applied as two scoped `terraform apply -target=` runs (not a
+full reapply, to avoid touching the still-broken Blocker 1 Certificates
+chain in the same operation):
+1. `-target=oci_core_instance.mymagnet_1 -target=oci_core_instance.mymagnet_2
+   -target=oci_load_balancer_backend.mymagnet_1 -target=oci_load_balancer_backend.mymagnet_2`
+   — replaced both instances onto the NAT-routed subnet (new private IPs
+   `10.0.2.227`/`10.0.2.102`), but errored before creating the two
+   `oci_load_balancer_backend` resources, on an **unrelated pre-existing
+   drift** on `oci_core_public_ip.mymagnet`: real state still carried
+   `private_ip_id` from this stack's pre-redesign single-instance
+   deployment, and every plan since wanted to null it (correct, since the
+   IP is LB-managed now via `reserved_ips`), but the live API rejects that
+   update outright — `404-NotAuthorizedOrNotFound, "PublicIp cannot be
+   assigned to or unassigned from PrivateIp ... as it is managed by
+   <the LB>"`. **Fixed** with `lifecycle { ignore_changes = [private_ip_id] }`
+   on that resource — the field is genuinely stale and the API won't let it
+   change anyway, so telling Terraform to stop tracking it was the correct
+   fix, not a workaround.
+2. Re-ran the same targeted apply for just the two `oci_load_balancer_backend`
+   resources — succeeded cleanly this time.
+
+Verified end to end: `curl http://137.131.32.68/` → `200`, real HTML
+(`<title>🧲 Magnet Library</title>`) confirmed in the response body — not a
+placeholder or error page. `oci lb backend-set-health get` moved from
+`CRITICAL`/`CONNECT_FAILED` to `WARNING` (both backends past the connect
+failure; `WARNING` rather than immediate `OK` is expected right after a
+fresh backend attaches, before the health checker's success-threshold
+window elapses — not a new failure). A full `terraform plan` afterward
+shows zero drift outside the still-open Blocker 1 resources below.
 
 **cloud-init (`cloud-init.yaml.tftpl`) does the actual app install and
 config** — clones the repo, runs the existing `deploy/setup.sh` (the

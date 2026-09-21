@@ -254,6 +254,19 @@ resource "oci_core_public_ip" "mymagnet" {
   # block below does that attachment by referencing this resource's id,
   # matching how oci_load_balancer_load_balancer's docs show reusing a
   # pre-existing Reserved IP instead of provisioning a new ephemeral one.
+  #
+  # REAL BUG, FOUND AND FIXED: real state still carries private_ip_id from
+  # this stack's pre-redesign single-instance deployment (that resource
+  # used to attach the IP directly to the instance). Every plan/apply since
+  # the redesign wanted to null it out to match this config — correct in
+  # principle, but the live API rejects the update outright: "PublicIp
+  # cannot be assigned to or unassigned from PrivateIp ... as it is managed
+  # by <the LB>" (404-NotAuthorizedOrNotFound). The IP is correctly
+  # LB-managed now; Terraform just can't express "stop tracking this field"
+  # via a normal update. `ignore_changes` tells Terraform to stop trying.
+  lifecycle {
+    ignore_changes = [private_ip_id]
+  }
 }
 
 # --- Load Balancer: the new (and now only) public entry point ---
