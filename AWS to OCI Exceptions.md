@@ -18,7 +18,15 @@ object that *is* the identity/billing root the way OCI's tenancy is; instead:
 - **AWS Organizations** groups multiple peer accounts under a management
   account. This is the rough analog of having multiple OCI tenancies, not of
   OCI's tenancy-to-compartment nesting — member accounts are still separately
-  rooted, not nested containers.
+  rooted, not nested containers. **Confirmed, named OCI counterpart: OCI
+  Organization Management** — same shape as AWS Organizations (peer
+  tenancies, not nested compartments, centralized under one subscription/
+  billing root). Full writeup — Parent/Child roles, UCM Subscription,
+  governance rules (service quotas/regions/tags), the default 50-child
+  scaling limit — in
+  [[8. Management and Governance — OCI Resource Manager, OS Management Hub, Observability]]'s
+  "Organization Management" section — a confirmed, named 1:1 match rather
+  than an inferred one.
 - **OCI tenancy** = the single root container for your whole cloud identity,
   created at signup — one IAM/identity root.
 - **OCI compartments** are purely logical subdivisions *inside* one tenancy for
