@@ -176,7 +176,15 @@ resource "oci_core_instance" "mymagnet_1" {
   }
 
   create_vnic_details {
-    subnet_id = var.subnet_id
+    # REAL BUG, FOUND NOT YET APPLIED — see var.instance_subnet_id's comment
+    # in variables.tf for the full story. This was var.subnet_id (the
+    # original public/IGW-routed lab-subnet), which does not provide egress
+    # for a VNIC with assign_public_ip = false below — confirmed live via
+    # console-history as the actual cause of Blocker 2 (cloud-init's `git
+    # clone` of MyMagnet timed out with "Network is unreachable", so
+    # setup.sh/nginx never ran at all). Switched to var.instance_subnet_id,
+    # a NAT-Gateway-routed private subnet, instead.
+    subnet_id = var.instance_subnet_id
     # No public IP on either instance anymore — the LB is the only public
     # entry point now. The Reserved Public IP (oci_core_public_ip.mymagnet
     # below) moved from fronting this instance directly to fronting the LB
@@ -211,7 +219,9 @@ resource "oci_core_instance" "mymagnet_2" {
   }
 
   create_vnic_details {
-    subnet_id        = var.subnet_id
+    # Same instance_subnet_id fix as mymagnet_1 above — see that resource's
+    # comment and var.instance_subnet_id's comment in variables.tf.
+    subnet_id        = var.instance_subnet_id
     assign_public_ip = false
     nsg_ids          = [oci_core_network_security_group.mymagnet.id]
   }

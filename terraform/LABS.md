@@ -280,19 +280,107 @@ than either the CLI or Terraform does. **The HTTPS listener, and both
 schema-valid Terraform — they are not in state and were never created.**
 
 **Blocker 2 — the app itself is not reachable through the LB, separate
-from Blocker 1.** `curl http://<load_balancer_public_ip>/` returns `502`.
+from Blocker 1. ROOT CAUSE FOUND, fix written but NOT applied.**
+`curl http://<load_balancer_public_ip>/` returns `502`.
 `oci lb backend-set-health get` shows both backends in `CRITICAL` state
 with `health-check-status: CONNECT_FAILED` on port 80 — the LB cannot even
 establish a TCP connection to either instance, despite the health checker
 config itself being correct (port 80, HTTP, path `/`, matching what was
 confirmed live against the original single-instance deployment before
-teardown). Both instances show `lifecycle-state: RUNNING` and have been up
-for 2+ hours — long enough for cloud-init to have finished under normal
-conditions. Not yet diagnosed further (would need SSH into a live instance
-to check cloud-init/setup.sh logs and confirm nginx actually started) —
-flagged here rather than guessed. **Next step for a future session:** SSH
-in with the stack's generated `lab-mymagnet-key` (scratchpad-only, not
-committed) and check `/var/log/cloud-init-output.log`.
+teardown).
+
+**Diagnosis path.** No bastion, no public IP on either instance, so direct
+SSH isn't possible. `oci instance-agent command create` (Run Command) was
+tried first — commands sat at `lifecycle-state: ACCEPTED` indefinitely and
+`oci instance-agent plugin list` returned empty, meaning Oracle Cloud
+Agent's management/Run-Command plugin never checked in at all (consistent
+with the root cause below: an instance that can't reach the internet also
+can't reach OCI's agent control-plane endpoints). Instance Console
+Connection (`oci compute instance-console-connection create`, RSA key
+required — the stack's existing `mymagnet-key` is ed25519 and was rejected
+with `InvalidParameter, "Invalid ssh public key type"`, so a separate
+throwaway RSA keypair was generated for the console only) reached a real
+`login:` prompt over serial — confirming the kernel/systemd/getty stack
+booted fine — but Ubuntu cloud images have no password set, so interactive
+login wasn't possible without credentials nobody has (correctly not
+attempted/guessed). What actually worked: `oci compute console-history
+capture` + `get-content` (with `--offset`/`--length`, since the CLI default
+only returns the first 10KB — the plain kernel boot log, cut off before
+cloud-init even starts) pulled real cloud-init runcmd output off the serial
+console ring buffer, no login required. A `SOFTRESET` (graceful reboot) on
+instance 1 was used partway through to force a clean, fully-buffered boot
+log rather than digging through a 2+-hour-old rotated buffer; the instance
+came back up in under a minute and cloud-init's original (Sep 18) boot
+output was still present in the captured history.
+
+**Root cause: the backend instances have no route to the internet at
+all — an OCI networking gap, not an app/OS-level bug.** Confirmed directly
+in the captured console log for **both** instances:
+
+```
+[  102.030149] cloud-init[1617]: Cloning into '/opt/mymagnet-src'...
+[  238.561280] cloud-init[1617]: fatal: unable to access 'https://github.com/rockkw/MyMagnet.git/':
+  Failed to connect to github.com port 443 after 136479 ms: Couldn't connect to server
+[  238.579810] cloud-init[1617]: sed: can't read /opt/mymagnet-src/deploy/setup.sh: No such file or directory
+[  238.587215] cloud-init[1617]: bash: /opt/mymagnet-src/deploy/setup.sh: No such file or directory
+```
+
+preceded by every apt/InRelease fetch failing the same way (`Network is
+unreachable` against both IPv4 and IPv6 mirror addresses). The very first
+`runcmd` step — cloning the MyMagnet repo — times out after ~136s with no
+route out, so `setup.sh` never exists to `sed`/run, nginx/venv/systemd
+units never get installed, and that's why the LB sees `CONNECT_FAILED`: no
+listener on port 80 was ever going to start. This is **not** the
+previously-fixed `awscli` bug (never reached — moot, since the clone that
+precedes it already failed) and **not** an iptables problem — the
+`iptables -I INPUT ... ACCEPT` / `netfilter-persistent save` runcmd steps
+are visible running successfully right after the failed clone/sed/setup.sh
+lines, proving cloud-init's `runcmd` has no `set -e` and kept going past
+each failure. Both instances hit the identical failure signature
+independently, ruling out a one-off transient blip.
+
+**Why there's no route:** `var.subnet_id` (both backend instances'
+subnet, `lab-network-stack`'s `lab-subnet`, `10.0.1.0/24`) has a route
+table sending `0.0.0.0/0` to an **Internet Gateway**
+(`oci_core_internet_gateway` in `lab-network-stack/main.tf`). An IGW only
+provides egress for a VNIC that itself holds a public IP. The 2-node/LB
+redesign set `assign_public_ip = false` on both `oci_core_instance`
+resources (correct, per that redesign's whole point — no direct public
+entry point anymore) but never repointed the instances at a NAT-routed
+subnet instead — so they went from "public IP + IGW" straight to "no
+public IP + still IGW," which is no egress at all. The LB itself is
+unaffected (it gets its own public IP via `reserved_ips`, independent of
+instance-level `assign_public_ip`) and was in fact applied into the same
+`lab-subnet` as the instances for this run (`lb_subnet_id` == `subnet_id`,
+both the same OCID in state) — that part is fine and doesn't need to
+change.
+
+**Fix (written, not applied):** `lab-private-network-stack` (already
+applied in this repo, real state) provisions exactly the missing piece —
+a NAT Gateway + private subnet (`10.0.2.0/24`, `lab-private-subnet`,
+`prohibit_public_ip_on_vnic = true`) with a route table sending `0.0.0.0/0`
+to the NAT gateway. Its live `private_subnet_id` output:
+`ocid1.subnet.oc1.phx.aaaaaaaag4oejcez5n7w77ixbt7qchi35wjulh7ear7o3htwkssroxo74b5a`.
+Added a new `var.instance_subnet_id` variable (distinct from `lb_subnet_id`,
+which must stay IGW/public-IP-capable for the LB) and pointed both
+`oci_core_instance.mymagnet_1`/`mymagnet_2`'s `create_vnic_details.subnet_id`
+at it instead of the old `var.subnet_id` (left declared but now unused, for
+tfvars/CI backward-compat). `terraform validate` passes.
+
+**Deliberately NOT applied automatically.** `subnet_id` isn't mutable
+in-place on `oci_core_instance` — changing it forces replacement of both
+instances: new private IPs (breaking this doc's own "known-good facts" for
+`10.0.1.66`/`10.0.1.251`), an `oci_load_balancer_backend` update to match,
+and fresh (empty) per-instance SQLite state, since neither instance has
+been backed up. That's a real, visible change to currently-running
+infrastructure beyond "restart a service, re-run a failed step, open a
+port" — left for a human-approved `terraform apply -target=` (scoped to
+just the two instances + their LB backends, not a full reapply) rather
+than run autonomously. **Next step for a future session (or the user):**
+review the diff, then something like
+`terraform apply -target=oci_core_instance.mymagnet_1 -target=oci_core_instance.mymagnet_2 -target=oci_load_balancer_backend.mymagnet_1 -target=oci_load_balancer_backend.mymagnet_2`,
+then re-verify `curl http://<load_balancer_public_ip>/` returns `200` and
+`oci lb backend-set-health get` shows both backends `OK`.
 
 **cloud-init (`cloud-init.yaml.tftpl`) does the actual app install and
 config** — clones the repo, runs the existing `deploy/setup.sh` (the
