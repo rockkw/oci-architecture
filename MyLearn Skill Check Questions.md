@@ -237,3 +237,81 @@ exactly match the more generic "scalability + resilience" framing that
 feels intuitive coming from general cloud-architecture reasoning.
 
 ---
+
+## Skill Check: Architect Security Solutions
+
+### Q1
+Which type of rule do you need to configure in OCI WAF to protect your web applications from various types of threats such as SQL injection, cross-site scripting, and HTML injection?
+
+A. Bot Management
+B. Rate Limiting rule
+C. Protection rule
+D. Access control rule
+
+**Answer: C** (selected correctly)
+
+*Matches [[5. Security — OCI IAM, WAF, Certificates, Vault, Cloud Guard]]'s WAF taxonomy directly — protection rules are the Input-Injection Attacks category (SQLi, XSS, LFI, RCE), distinct from access control rules (allow/deny/challenge by IP/geo/header/method) and Bot Management/rate limiting (the Bot & Automation and Layer 7 Volumetric & Abuse categories respectively). The question's three named threats (SQLi, XSS, HTML injection) are all squarely Input-Injection — the tell pointing straight at Protection rule.*
+
+---
+
+### Q2
+Which statement best explains why a dynamic group is needed for Certificate Authority creation in OCI Certificate service?
+
+A. A dynamic group is necessary to manage the Certificate Authority's revocation list.
+B. A dynamic group is necessary to create TLS certificates after the Certificate Authority is created.
+C. A dynamic group is not necessary for creating a Certificate Authority.
+D. A dynamic group is necessary to allow the Certificate Authority to make API calls to vault or object storage services.
+
+**Answer: D** (initially selected B — incorrect; corrected to D before submitting)
+
+*A real, live-confirmed fact, not just a plausible-sounding option: a genuine tenancy Console screen showed a dynamic group named `OCI-SM-CA-DG`, described as "Dynamic Group for the Certificate Authority" — proof the CA itself needs resource-principal-style access to call other OCI services (Vault/KMS specifically, to reach its signing key) on its own behalf, the same pattern used for compute instances/Functions accessing buckets. B describes an unrelated, not-quite-coherent relationship (a dynamic group needed by a human to create certs afterward). This is the exact same unresolved authorization gap `terraform/LABS.md`'s `lab-mymagnet-stack` entry documents at length: real CA creation attempts against a real KMS key failed with "Authorization failed... Key Id..." even after two different IAM policy grants — a live, hands-on confirmation of the concept this question tests, not just abstract terminology. See [[5. Security — OCI IAM, WAF, Certificates, Vault, Cloud Guard]]'s dynamic-group-for-CA note.*
+
+---
+
+### Q3
+Which Oracle Cloud Service provides restricted and time-limited secure access to resources that don't have public endpoints?
+
+A. SSL certificate
+B. Bastion
+C. Load balancer
+D. Internet Gateway
+
+**Answer: B** (selected correctly)
+
+*Matches [[5. Security — OCI IAM, WAF, Certificates, Vault, Cloud Guard]]'s "OCI Bastion service vs. a self-managed bastion host" section directly — restricted, time-limited (session-bound) secure access to private resources with no public endpoint, without exposing them via a public IP/jump host of your own.*
+
+---
+
+### Q4
+Suppose you have a network firewall policy with two decryption rules and three security rules, each with a unique priority number. A packet arrives at the firewall, and the firewall inspects it according to the policy rules. Which scenario occurs?
+
+A. The firewall evaluates the security rules first, then evaluates the decryption rules, and drops the packet if no rule matches the packet information.
+B. The firewall evaluates the decryption rules first, applies the specified rule action if a match is found, and drops the packet if no decryption rule matches the packet information.
+C. The firewall evaluates the decryption rules first, applies the specified rule action if a match is found, and then evaluates the security rules in priority order. If a security rule matches, the specified rule action is applied and no further rules are evaluated. If no security rule matches, the packet is dropped.
+D. The firewall evaluates the security rules first, applies the specified rule action if a match is found, and then evaluates the decryption rules in priority order. If a decryption rule matches, the specified rule action is applied and no further rules are evaluated. If no decryption rule matches, the packet is dropped.
+
+**Answer: C** (initially selected D — incorrect; corrected to C before submitting)
+
+*Directly contradicts the four-stage pipeline documented in [[5. Security — OCI IAM, WAF, Certificates, Vault, Cloud Guard]]'s "How the Network Firewall processes every packet" section: **Decryption Rules evaluate first** (so encrypted threats are inspectable before anything downstream looks at them), **then Security Rules** (which drop unmatched traffic — the firewall's own internal default-deny), then Tunnel Inspection, then NAT last. D reverses stages 1 and 2. C is the only option matching the documented order, including the correct default-deny behavior at the security-rules stage ("if no security rule matches, the packet is dropped").*
+
+---
+
+### Q5
+Which statement is MOST accurate about Oracle Cloud Infrastructure (OCI) Dedicated Key Management Service (DKMS)?
+
+A. DKMS offers a lower level of security compared to a private vault.
+B. DKMS requires using OCI APIs for all cryptographic operations.
+C. DKMS offers a shared HSM partition managed by Oracle.
+D. DKMS allows full control over keys and the underlying HSM partitions.
+
+**Answer: D** (initially selected C — incorrect; corrected to D before submitting)
+
+*Inverts the core differentiator documented in [[5. Security — OCI IAM, WAF, Certificates, Vault, Cloud Guard]]'s "Dedicated Key Management" section: Dedicated KMS's first named benefit is explicitly **"Full Control"** — a fully managed, **single-tenant** HSM partition with exclusive access, the opposite of a shared partition. C describes the regular (`DEFAULT`) shared-vault model, not Dedicated KMS's whole point. B is also wrong — Dedicated KMS's differentiator is industry-standard interfaces like **PKCS#11** specifically so applications can talk directly to the HSM *without* going through OCI APIs, per the same section.*
+
+---
+
+## Result: Passed — 100% (5/5)
+
+Three of five questions had an incorrect answer selected initially and were corrected before submitting (Q2: B → D; Q4: D → C; Q5: C → D) — a 40% initial-miss rate despite the final 100%, and all three misses were on material already written up in Note 5 before taking this skill check. Added to the certification plan's "Top 10 items to review" list: the Network Firewall pipeline order (Decryption → Security → Tunnel Inspection → NAT), Dedicated KMS's single-tenant/full-control value prop (not shared), and the dynamic-group-for-CA purpose — the last one doubling as live confirmation of the exact concept behind `lab-mymagnet-stack`'s still-unresolved Certificate Authority authorization bug.
+
+---

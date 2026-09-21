@@ -93,6 +93,30 @@ Tenant sign in -
 - [ ] Take the official practice exam/skill check from the learning path. Log every miss by domain, misconception, and missing service comparison; do not merely record the score.
 - [ ] Deliverable: ranked gap list and an error log with the corrected architectural rule for each miss.
 
+## Top 10 items to review before the exam
+
+Running list, populated from real skill-check misses (see
+[[MyLearn Skill Check Questions]] for full question text and rationale) —
+not guessed weak spots, only things actually gotten wrong first.
+
+1. **Network Firewall four-stage pipeline order** — Decryption Rules
+   evaluate *first*, then Security Rules, then Tunnel Inspection, then NAT.
+   Got this backwards on Skill Check: Architect Security Solutions Q4
+   (selected "security rules first, then decryption" — wrong order).
+2. **Dedicated KMS's core value prop is single-tenant/full control, not
+   shared.** Got this backwards on the same skill check Q5 (selected "DKMS
+   offers a shared HSM partition managed by Oracle" — the opposite of
+   DKMS's actual "Full Control"/single-tenant-partition benefit).
+3. **Why a dynamic group is needed for Certificate Authority creation** —
+   it's for the CA itself to make API calls to Vault/KMS as a resource
+   principal (matches the real `OCI-SM-CA-DG` dynamic group seen live in
+   Console), not "to create TLS certs after the CA is created." Got this
+   wrong on the same skill check Q2 — and this is the exact same
+   unresolved authorization gap `terraform/LABS.md`'s `lab-mymagnet-stack`
+   entry has been stuck on (real IAM policy grants for the CA's key access
+   still failing) — a live, hands-on confirmation of a concept this test
+   also caught as a knowledge gap.
+
 ### Week 4 — Retrieval practice and booking gate
 
 - [ ] Re-study only the lowest two or three domains from the error log, using the relevant MyLearn module, Student/Activity Guide, and official docs.
