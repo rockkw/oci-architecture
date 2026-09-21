@@ -95,9 +95,15 @@ Tenant sign in -
 
 ## Top 10 items to review before the exam
 
-Running list, populated from real skill-check misses (see
-[[MyLearn Skill Check Questions]] for full question text and rationale) —
-not guessed weak spots, only things actually gotten wrong first.
+Running list. Items 1–7 come from real, own-answer misses across all four
+MyLearn skill checks taken so far (see [[MyLearn Skill Check Questions]]
+for full question text and rationale) — not guessed weak spots, only things
+actually gotten wrong first, whether caught before submitting or not.
+Items 8–10 are lower-confidence answer-key entries from the separate
+Quizlet-derived practice bank ([[practice-1-updated]], older 1Z0-997-22
+exam version but same tested concepts) flagged as "best-guess" there —
+included because they're plausible real gaps, but weighted lower than 1–7
+since they were never actually attempted and self-graded.
 
 1. **Network Firewall four-stage pipeline order** — Decryption Rules
    evaluate *first*, then Security Rules, then Tunnel Inspection, then NAT.
@@ -116,6 +122,50 @@ not guessed weak spots, only things actually gotten wrong first.
    entry has been stuck on (real IAM policy grants for the CA's key access
    still failing) — a live, hands-on confirmation of a concept this test
    also caught as a knowledge gap.
+4. **Kubernetes Secret vs. ConfigMap for registry credentials.** Got this
+   wrong on Skill Check: Design Cloud-Native... Q1 (selected ConfigMap —
+   ConfigMap is for non-sensitive config only; registry credentials need a
+   `kubernetes.io/dockerconfigjson`-type Secret, referenced via
+   `imagePullSecrets`). A general Kubernetes concept, not OCI-specific —
+   easy to blank on if K8s fundamentals are rusty.
+5. **OCIR retention policy terminology: Global vs. Custom, not "Local."**
+   Got this wrong on the same skill check Q3 (selected a "local" retention
+   policy option that isn't real OCIR terminology at all) — the real second
+   policy type alongside Global is called **Custom**, scoped to specific
+   repositories explicitly added to it.
+6. **Terraform resource *type* is provider-specific; resource *name* is
+   not.** Missed on Skill Check: Deliver Infrastructure-as-code Q5 (the
+   FALSE-statement question) — `resource "<TYPE>" "<NAME>" {}` has two
+   separate naming layers, and it's easy to conflate them under the generic
+   phrase "resource names."
+7. **Monitoring is one of Oracle's three canonical HA design pillars
+   (Redundancy/Failover/Monitoring) — not Scalability.** Missed, uncorrected,
+   on Skill Check: Design Scalable and Elastic Solutions... Q5 — a real
+   framing mismatch between Oracle's specific three-pillar answer and the
+   more intuitive general "scalability + resilience" instinct. The one
+   skill-check miss across all four that was never caught before
+   submitting — worth extra attention for that reason alone.
+8. **BYOK import requires wrapping the key with the Vault's own RSA
+   wrapping key** — flagged low-confidence in `[[practice-1-updated]]` Q41
+   (best-guess answer A). Directly confirmed independently and with high
+   confidence elsewhere this session: Note 5's Vault section documents the
+   wrapping-key mechanism in detail (every vault ships one by default,
+   `RSA_OAEP_AES_SHA256`, used specifically to wrap external key material on
+   import) — worth reconciling the practice-bank phrasing against that
+   confirmed mechanism rather than treating it as still uncertain.
+9. **OCI Audit event retention period is configurable (90–365 days), not
+   fixed** — flagged low-confidence in `[[practice-1-updated]]` Q21
+   ("retention period cannot be modified" was reasoned as the *false*
+   statement, i.e. retention actually IS configurable) — worth a direct doc
+   check before the exam since this was never independently confirmed
+   in-session the way item 8 was.
+10. **Virtual Private Vault selection criteria — exact two triggers.**
+    `[[practice-1-updated]]` Q35 (medium confidence: more key versions than
+    a shared vault's limit, and greater isolation) partially overlaps with
+    this session's own confirmed material (Note 5's "virtual private vault"
+    section: dedicated HSM partition, distinct pricing) but the *key-version
+    ceiling* trigger specifically was never independently verified this
+    session — worth confirming the exact number against live docs.
 
 ### Week 4 — Retrieval practice and booking gate
 

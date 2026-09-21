@@ -141,6 +141,16 @@ A ("alias") and B (CLI/provider version independence) are both **true**, confirm
 
 ---
 
+## Result: Not fully recorded
+
+Q4 was never captured (this deck jumps Q3 → Q5), and no final pass/fail
+score or percentage was recorded for this skill check — unlike the other
+three. Q5 is confirmed as a MyLearn-graded miss (initially selected A, C;
+corrected to C, D). Flagged here rather than guessed — if this skill check
+is retaken, capture the full result and all five questions.
+
+---
+
 ## Skill Check: Design Scalable and Elastic Solutions for High Availability and Disaster Recovery
 
 ### Q1
