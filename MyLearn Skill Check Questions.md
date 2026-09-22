@@ -6,6 +6,12 @@
 [[practice-1-updated]], which is sourced from a Quizlet flashcard set —
 keep these separate since they come from different sources.*
 
+**Recurring exam pattern**: several skill-check questions mix real OCI
+concepts with fabricated-but-plausible-sounding options. See [[OCI
+Architect Professional Tips]] for the full write-up (two distractor
+flavors, the five-step prep strategy, and the finite-lists cheat-sheet)
+— flagging each instance below as it comes up.
+
 ---
 
 ## Skill Check: Design Cloud-Native, Microservices, and Serverless Architecture
@@ -323,5 +329,86 @@ D. DKMS allows full control over keys and the underlying HSM partitions.
 ## Result: Passed — 100% (5/5)
 
 Three of five questions had an incorrect answer selected initially and were corrected before submitting (Q2: B → D; Q4: D → C; Q5: C → D) — a 40% initial-miss rate despite the final 100%, and all three misses were on material already written up in Note 5 before taking this skill check. Added to the certification plan's "Top 10 items to review" list: the Network Firewall pipeline order (Decryption → Security → Tunnel Inspection → NAT), Dedicated KMS's single-tenant/full-control value prop (not shared), and the dynamic-group-for-CA purpose — the last one doubling as live confirmation of the exact concept behind `lab-mymagnet-stack`'s still-unresolved Certificate Authority authorization bug.
+
+---
+
+## Skill Check: Autonomous Database
+
+*Prior attempt on this skill check showed "Highest score: 40%" in the playlist sidebar before this retake — see [[6. Databases — OCI Database, NoSQL, Caching, DR]] for the full underlying notes.*
+
+### Q1
+Which three are inputs provided when provisioning an Autonomous Database?
+
+A. Deployment type
+B. Name of superuser
+C. Network access type
+D. Compute model and shape
+E. Workload type
+
+**Answer: A, C, E** (attempt 1: selected B, C, D — incorrect; attempt 2: corrected to A, D, E — still incorrect, D flagged wrong; final correct answer is A, C, E)
+
+*Platform feedback, verbatim: "While provisioning in the Console, you provide the display name, type of network access, type of workload, the type of deployment, version, license type, encryption type, etc." — **Compute model and shape (D) is NOT one of the intended three**, contradicting my own first read of this question. [[6. Databases — OCI Database, NoSQL, Caching, DR]] does correctly document compute model as chosen at provisioning and locked afterward (confirmed separately during the Cloning demo) — that fact isn't wrong, but it isn't one of the three inputs *this specific question* is built around. The real three are deployment type, network access type, and workload type. **A genuine, confirmed miss** — flagged for the Top 10 review list. Worth double-checking Note 6's provisioning section doesn't overstate compute model's centrality relative to network access type in this specific "which inputs" framing.*
+
+---
+
+### Q2
+Which two of these are supported deployment options for an Autonomous Database?
+
+A. Azure HPC
+B. Dedicated Exadata infrastructure in AWS
+C. Oracle Dedicated Region Cloud@Customer
+D. OCI Public Cloud
+
+**Answer: C, D** (selected correctly)
+
+*A and B are fabricated distractors — Autonomous Database has no native deployment option on Azure or AWS infrastructure. **Trick worth flagging**: this question's four answer choices only surface 2 of the **4 real** documented deployment options ([[6. Databases — OCI Database, NoSQL, Caching, DR]]'s "Autonomous Database deployment options — four, not two" section: Serverless, Dedicated, Exadata Cloud@Customer, and Dedicated Region Cloud@Customer). "OCI Public Cloud" as an answer choice is not itself a named Oracle deployment-option term — it's a loose stand-in for Serverless/Dedicated running in a standard public OCI region, used here purely to distinguish from the on-premises Cloud@Customer option. Don't let this question's simplified two-option framing overwrite the real four-option taxonomy when studying — Exadata Cloud@Customer and Serverless-vs-Dedicated distinctions are still real, separately examinable facts this question doesn't test.*
+
+---
+
+### Q3
+Which workload type should you choose while provisioning an Autonomous Database for a supply chain customer that needs to purpose the database, to record daily transactions and then run an EOD job as part of data consolidation?
+
+A. Autonomous Data Warehouse
+B. Autonomous Transaction Processing
+C. Autonomous Blockchain Database
+D. Autonomous JSON Database
+
+**Answer: B** (selected correctly)
+
+*Platform feedback, verbatim: "Workload types are ATP, ADW, AJOD, APEX" — note the platform's own feedback text spells the JSON workload type **"AJOD"** here, vs. **"AJD"** used consistently in [[6. Databases — OCI Database, NoSQL, Caching, DR]] — likely a typo in MyLearn's own copy rather than a different real service, but flagging the naming variance in case it recurs. **Autonomous Blockchain Database (C) is a fabricated distractor** — not one of the real four workload types (ATP/ADW/AJD/APEX). Recording daily transactions is textbook OLTP; the EOD consolidation job doesn't push this to ADW — ATP is designed to handle mixed transactional + light batch/reporting workloads without a separate warehouse.*
+
+---
+
+### Q4
+Which two statements about Autonomous Database provisioning are true?
+
+A. Autonomous Database is provisioned as a pluggable database.
+B. Customer configures and manages the Exadata hardware before they can provision the Autonomous Database.
+C. Autonomous Database is automatically provisioned in Oracle-managed Exadata hardware.
+D. Autonomous Database is provisioned in Oracle Shards configured with high availability and fault tolerance.
+
+**Answer: A, C** (attempt 1: selected C, D — incorrect; attempt 2: corrected to A, C — correct)
+
+*Platform feedback, verbatim: "Autonomous Database is provisioned in Exadata hardware and each autonomous database is a pluggable database following multitenant architecture." **D is a fabricated-scope distractor**: it describes Globally Distributed Autonomous Database (sharding), a separate, opt-in service — NOT what happens automatically during standard Autonomous Database provisioning (see [[6. Databases — OCI Database, NoSQL, Caching, DR]]'s "Globally Distributed Autonomous Database — sharding architecture" section). **B is also wrong** and directly contradicts the "fully managed" premise — Oracle always owns/manages the Exadata hardware layer, in both Serverless and Dedicated deployment; even Dedicated's isolation is at the logical (ACD/ADB) level, not physical hardware control. **Real architectural fact confirmed by this question**: every Autonomous Database instance, regardless of deployment mode, runs on Exadata infrastructure — the Serverless/Dedicated distinction is about who owns/manages that Exadata (shared multi-tenant vs. a dedicated Exadata Infrastructure resource), not whether Exadata is used at all.*
+
+---
+
+### Q5
+Which are the three allowed network access configurations available for Autonomous Database on shared infrastructure?
+
+A. Private endpoint access only
+B. Secure access from everywhere
+C. Access only from OCI peered VCNs
+D. Secure access from allowed IP and VCNs only
+
+**Answer: A, B, D** (attempt 1: selected A, C, D — incorrect; attempt 2: corrected to A, B, D — correct)
+
+*Platform feedback, verbatim: "Private endpoint access only, Secure access from allowed IP and VCNs only, Secure access from everywhere are the three network access types available for you to choose when provisioning Autonomous Database in shared infrastructure." Matches [[6. Databases — OCI Database, NoSQL, Caching, DR]]'s Serverless Provisioning network access tiers exactly. **"Access only from OCI peered VCNs" (C) is a fabricated distractor** — not one of the three real named tiers; don't confuse it with the real "allowed IPs and VCNs" tier (D), which does restrict by VCN among other criteria but isn't phrased or scoped as "peered VCNs only."*
+
+---
+
+## Result: Passed — 80% (4/5)
+
+One question (Q1) had a **confirmed, uncorrected miss**: selected "Compute model and shape" instead of "Network access type" as one of the three core provisioning inputs, even after a first correction attempt. Three other questions (Q2, Q4, Q5) each involved at least one fabricated-but-plausible distractor mixed among real OCI concepts — see the "Recurring exam pattern" note at the top of this file and [[OCI Architect Professional Tips]] for the consolidated study strategy against this. This is a real, substantial improvement from the prior attempt's "Highest score: 40%." Added to the certification plan's "Top 10 items to review" list: the exact three Autonomous Database provisioning inputs (deployment type, network access type, workload type — NOT compute model/shape), and a reminder to re-verify Note 6's provisioning section framing against this platform feedback.
 
 ---

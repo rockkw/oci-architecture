@@ -95,14 +95,14 @@ Tenant sign in -
 
 ## Top 10 items to review before the exam
 
-Running list. Items 1–7 come from real, own-answer misses across all four
+Running list. Items 1–8 come from real, own-answer misses across all five
 MyLearn skill checks taken so far (see [[MyLearn Skill Check Questions]]
 for full question text and rationale) — not guessed weak spots, only things
 actually gotten wrong first, whether caught before submitting or not.
-Items 8–10 are lower-confidence answer-key entries from the separate
+Items 9–11 are lower-confidence answer-key entries from the separate
 Quizlet-derived practice bank ([[practice-1-updated]], older 1Z0-997-22
 exam version but same tested concepts) flagged as "best-guess" there —
-included because they're plausible real gaps, but weighted lower than 1–7
+included because they're plausible real gaps, but weighted lower than 1–8
 since they were never actually attempted and self-graded.
 
 1. **Network Firewall four-stage pipeline order** — Decryption Rules
@@ -145,7 +145,21 @@ since they were never actually attempted and self-graded.
    more intuitive general "scalability + resilience" instinct. The one
    skill-check miss across all four that was never caught before
    submitting — worth extra attention for that reason alone.
-8. **BYOK import requires wrapping the key with the Vault's own RSA
+8. **Autonomous Database provisioning inputs: deployment type, network
+   access type, workload type — NOT compute model/shape.** Missed,
+   uncorrected even after a retry, on Skill Check: Autonomous Database Q1
+   — selected "compute model and shape" over "network access type" as one
+   of the three core provisioning inputs. Compute model IS a real
+   provisioning-time choice (locked afterward, confirmed elsewhere in
+   Note 6), but it isn't one of the three this specific question tests
+   for — a reminder that "is this a real fact" and "is this what THIS
+   question wants" are different checks. This skill check also
+   repeatedly used **fabricated-but-plausible distractors** (fake
+   deployment options like "Azure HPC," a fake workload type "Autonomous
+   Blockchain Database," a fake network access tier "OCI peered VCNs
+   only") — see [[OCI Architect Professional Tips]] for the consolidated
+   five-step strategy against this recurring exam pattern.
+9. **BYOK import requires wrapping the key with the Vault's own RSA
    wrapping key** — flagged low-confidence in `[[practice-1-updated]]` Q41
    (best-guess answer A). Directly confirmed independently and with high
    confidence elsewhere this session: Note 5's Vault section documents the
@@ -153,13 +167,13 @@ since they were never actually attempted and self-graded.
    `RSA_OAEP_AES_SHA256`, used specifically to wrap external key material on
    import) — worth reconciling the practice-bank phrasing against that
    confirmed mechanism rather than treating it as still uncertain.
-9. **OCI Audit event retention period is configurable (90–365 days), not
-   fixed** — flagged low-confidence in `[[practice-1-updated]]` Q21
-   ("retention period cannot be modified" was reasoned as the *false*
-   statement, i.e. retention actually IS configurable) — worth a direct doc
-   check before the exam since this was never independently confirmed
-   in-session the way item 8 was.
-10. **Virtual Private Vault selection criteria — exact two triggers.**
+10. **OCI Audit event retention period is configurable (90–365 days), not
+    fixed** — flagged low-confidence in `[[practice-1-updated]]` Q21
+    ("retention period cannot be modified" was reasoned as the *false*
+    statement, i.e. retention actually IS configurable) — worth a direct doc
+    check before the exam since this was never independently confirmed
+    in-session the way item 9 was.
+11. **Virtual Private Vault selection criteria — exact two triggers.**
     `[[practice-1-updated]]` Q35 (medium confidence: more key versions than
     a shared vault's limit, and greater isolation) partially overlaps with
     this session's own confirmed material (Note 5's "virtual private vault"
