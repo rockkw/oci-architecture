@@ -14,6 +14,7 @@ lab-network-stack
 │   └── lab-storage-stack (needs an instance OCID, e.g. from lab-nsg-stack)
 └── lab-private-network-stack
     ├── lab-bastion-stack (needs lab-nsg-stack's public subnet too)
+    ├── lab-basedb-stack (needs lab-network-stack's vcn_id + lab-private-network-stack's private_subnet_id)
     └── lab-oke-stack (needs lab-network-stack's public subnet too)
         ├── lab-oke-app-stack (needs lab-oke-stack's cluster_id, dependency-only)
         └── lab-oke-gpu-stack (needs lab-oke-stack's cluster_id)
@@ -517,6 +518,83 @@ SSH key) almost verbatim, just without `assign_public_ip`.
 
 Depends on: `lab-network-stack` (`vcn_id`, public `subnet_id`), `lab-private-network-stack` (`private_subnet_id`)
 Outputs: `bastion_id`, `private_instance_private_ip`, `session_ssh_metadata`
+
+### lab-basedb-stack
+
+Lab 6 — Oracle Base Database Service, **applied and verified live**: a
+single-instance VM DB System plus a ZPR policy protecting the database
+listener — confirms ZPR applies to database resources directly, not just
+compute, per the "ZPR applied to a database" section added to Note 6 from
+this same MyLearn module.
+
+**Builds on:** `lab-network-stack` (`vcn_id`, plus its VCN's own
+`display_name` for the ZPR VCN-scope attribute) and
+`lab-private-network-stack` (`private_subnet_id`) — the DB system gets no
+public IP and reaches Object Storage (patching/backups) via the Service
+Gateway `lab-private-network-stack` already provisions, not the internet.
+Reuses `lab-zpr-stack`'s ZPR pattern (namespace/attribute, then a policy)
+with its own separate `BaseDbLabRole` namespace, so this stack stays
+independently destroyable without touching `lab-zpr-stack`'s own tags.
+
+Depends on: `lab-network-stack` (`vcn_id`, VCN `display_name`),
+`lab-private-network-stack` (`private_subnet_id`)
+Outputs: `db_system_id`, `db_home_id`, `private_ip`, `scan_dns_name`
+
+**Applied successfully — 10 resources, confirmed live against the real
+API** (`oci db system get`, not just Terraform's own state):
+`lifecycle-state: AVAILABLE`, shape `VM.BaseDB.x86`, hostname `basedblab`.
+`terraform.tfstate` intentionally not committed (matches this repo's
+existing pattern for every other lab).
+
+**Four real bugs found and fixed across the design and apply passes, in
+order — worth reading as a genuine debugging trail, not a single
+"corrected the config" note:**
+1. **`storage_management` isn't a top-level argument.** `terraform validate`
+   rejected it directly on `oci_database_db_system` — confirmed via
+   `terraform providers schema -json` that it's nested inside a
+   `db_system_options` block. LVM chosen to match the Console's own
+   default ("Recommended for quick deployments").
+2. **`VM.Standard.E5.Flex` (the AMD *compute* shape shown in MyLearn's own
+   slide) is not a valid DB System shape** — a real 400 InvalidParameter
+   on first apply. DB System shapes are a **separate namespace** from
+   compute instance shapes entirely; `oci db system-shape list` returned
+   only `Exadata*`/`ExadataCC*`/`VM.BaseDB.x86`/`ExaDbXS` — no
+   `VM.Standard.*` shapes at all. Corrected to **`VM.BaseDB.x86`**.
+3. **`compute_model` isn't actually inferred despite being schema-marked
+   "optional, computed."** Leaving it unset produced a real 400
+   ("Invalid computeModel null for shape VM.BaseDB.x86") — "computed"
+   here means the API reports a value back after creation, not that it
+   will pick one for you. `oci db system-shape list` reports
+   `compute-model=ECPU` for this shape; set explicitly.
+4. **ECPU-based shapes take core count via a separate `compute_count`
+   argument, not the legacy `cpu_core_count`.** With `compute_model =
+   "ECPU"` set, `cpu_core_count` alone still failed ("computeCount cannot
+   be null") — both attributes exist on the provider schema, but only one
+   applies per compute model. Set `compute_count = 4` (this shape's
+   `minimum-core-count`/`core-count-increment`, confirmed via the same
+   `system-shape list` output) and dropped `cpu_core_count` entirely.
+5. **Admin password complexity is stricter than the commonly-quoted
+   rule.** An alphanumeric-only password (9-30 chars, upper/lower/digit,
+   no username substring — the documented floor) was rejected: "The
+   database admin password should contain at least two special
+   characters." Base Database Service's real floor requires **≥2 special
+   characters** on top of the usual rules.
+6. **`oci_zpr_configuration` as a `resource` breaks when `lab-zpr-stack`
+   has already applied** — ZPR tenancy onboarding is a real, tenancy-wide
+   **singleton**; a second stack trying to `resource`-own it hit a real
+   409 Conflict ("Configuration already exists"). Importing it into this
+   stack's state was considered and rejected (a future `terraform destroy`
+   here would then try to tear down onboarding `lab-zpr-stack` still
+   depends on). Fixed by switching to a **`data` source** — a read-only
+   confirmation ZPR is enabled, with no create/destroy lifecycle of its
+   own.
+
+**Deliberately narrow sizing, not a production reference**: 4 ECPUs (this
+shape's real minimum, not a chosen value), 256 GB data storage (well
+under the platform's 80 TB ceiling), Standard Edition licensing,
+LICENSE_INCLUDED (no BYOL complexity), single node, Balanced storage
+performance — see Note 6 for the full single-instance-vs-RAC ceiling
+numbers this lab deliberately stays well under.
 
 ### lab-lb-stack
 Adds an instance configuration, a 2-instance pool built from that configuration, and a
