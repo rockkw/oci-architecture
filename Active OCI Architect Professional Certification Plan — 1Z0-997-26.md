@@ -76,23 +76,23 @@ Tenant sign in -
   - [x] [[Lab 4 - OCI Architect Pro Exam - Vault, Guard, Zones, Logging, Network Boundary]]
 - [ ] complete **Module: Network Security** — Security Lists, NSGs, Network Firewall, WAF, Certificates, Load Balancers — covers your NSG build and the WAF-vs-Network-Firewall design decision directly
   - [x] Zero Trust Packet Routing (ZPR) — see [[Lab 5 - OCI Architect Pro Exam - Zero Trust Packet Routing]] for the hands-on Terraform build (VM-01/VM-02 SSH lockdown, `lab-zpr-stack`, dry-run verified)
-  - [ ] **Module: Data Protection** — Vault, encryption keys, secrets, Data Safe — covers your Vault/key build
-  - [ ] **Module: Maintaining Security Posture** — Cloud Guard, Security Zones, Monitoring, Logging & Events — covers the diagram/design half of Lab 4 plus your logging/audit retention piece
-  - [ ] There's also an **OS and Workload Protection** module (Bastion, vulnerability scanning, OS Management Hub) — not directly asked for in Lab 4, but it's the same territory as Note 8's AWS-translation table, so worth a skim if you have time
+  - [x] **Module: Data Protection** — Vault, encryption keys, secrets, Data Safe — covers your Vault/key build
+  - [x] **Module: Maintaining Security Posture** — Cloud Guard, Security Zones, Monitoring, Logging & Events — covers the diagram/design half of Lab 4 plus your logging/audit retention piece
+  - [x] There's also an **OS and Workload Protection** module (Bastion, vulnerability scanning, OS Management Hub) — not directly asked for in Lab 4, but it's the same territory as Note 8's AWS-translation table, so worth a skim if you have time
 
-- [ ] Compare Base Database Service, Autonomous Database, Exadata Cloud Service, RAC, Data Guard, and Autonomous Recovery Service by isolation, control, availability, operations burden, and licensing—not product trivia.
-  - [ ] RAC and BYOL licensing implications specifically — this is where OCI Pro diverges hardest from AWS; there's no direct AWS equivalent to Oracle licensing questions, so don't try to map it to a service comparison the way the rest of this plan does.
-- [ ] For every database scenario, force an answer to: “Why not the nearest AWS service?” This is where your SAA strength can otherwise overgeneralize.
-- [ ] Deliverable: a decision table for three sample workloads—cost-sensitive web app, regulated database, and low-RTO Oracle database.
+- [x] Compare Base Database Service, Autonomous Database, Exadata Cloud Service, RAC, Data Guard, and Autonomous Recovery Service by isolation, control, availability, operations burden, and licensing—not product trivia.
+  - [x] RAC and BYOL licensing implications specifically — this is where OCI Pro diverges hardest from AWS; there's no direct AWS equivalent to Oracle licensing questions, so don't try to map it to a service comparison the way the rest of this plan does.
+- [x] For every database scenario, force an answer to: “Why not the nearest AWS service?” This is where your SAA strength can otherwise overgeneralize.
+- [x] Deliverable: a decision table for three sample workloads—cost-sensitive web app, regulated database, and low-RTO Oracle database.
 
 ### Week 3 — Hybrid/multicloud, migration, and observability
 
-- [ ] Work FastConnect (public/private virtual circuits), VPN, DRG, local versus remote peering, OCI-Azure Interconnect, Oracle Database@Azure, and Oracle Cloud VMware Solution into scenario flashcards.
+- [x] Work FastConnect (public/private virtual circuits), VPN, DRG, local versus remote peering, OCI-Azure Interconnect, Oracle Database@Azure, and Oracle Cloud VMware Solution into scenario flashcards.
   - [ ] Broaden this beyond just @Azure: know Oracle Database@AWS and @GCP positioning too (new as of 2026) — even without going deep on each, expect "which multicloud option fits this scenario" framed as a comparison across all three, not just Azure.
-- [ ] Build a migration runbook: discovery → landing zone → data move → cutover → validation → rollback. Contrast Application Migration, Database Migration, Zero Downtime Migration, and Data Transfer.
-- [ ] Configure one complete observability path: metric/log → alarm → Notifications → response owner. Add APM or Logging Analytics only where the use case calls for application tracing or richer log analysis.
-- [ ] Take the official practice exam/skill check from the learning path. Log every miss by domain, misconception, and missing service comparison; do not merely record the score.
-- [ ] Deliverable: ranked gap list and an error log with the corrected architectural rule for each miss.
+- [x] Build a migration runbook: discovery → landing zone → data move → cutover → validation → rollback. Contrast Application Migration, Database Migration, Zero Downtime Migration, and Data Transfer.
+- [x] Configure one complete observability path: metric/log → alarm → Notifications → response owner. Add APM or Logging Analytics only where the use case calls for application tracing or richer log analysis.
+- [x] Take the official practice exam/skill check from the learning path. Log every miss by domain, misconception, and missing service comparison; do not merely record the score.
+- [x] Deliverable: ranked gap list and an error log with the corrected architectural rule for each miss.
 
 ## Top items to review before the exam
 
@@ -210,13 +210,19 @@ since they were never actually attempted and self-graded.
     documented pattern is encrypt offline → store ciphertext as a config
     variable → function code calls the Vault/KMS Decrypt API at runtime.
     See [[14. Serverless — OCI Functions, Events, API Gateway]].
-14. **OCI API Gateway has a native rate-limiting request policy — the
-    fastest DDoS mitigation for a time-constrained scenario, no new
-    service required.** Missed on Practice Exam 997-26 Q4 — selected "VCN
-    IP address segregation," which is not a real OCI feature (fabricated
-    distractor). Rate limiting is a request policy configured directly on
-    the API Gateway deployment. See [[14. Serverless — OCI Functions,
-    Events, API Gateway]].
+14. ✅ **COMPLETE** — **OCI API Gateway has a native rate-limiting request
+    policy — the fastest DDoS mitigation for a time-constrained scenario,
+    no new service required, but not a complete DDoS solution by
+    itself (doesn't stop a true distributed/volumetric flood — that
+    needs WAF + rate limiting + platform L3/L4 protection layered
+    together).** Missed on Practice Exam 997-26 Q4 — selected "VCN IP
+    address segregation," which is not a real OCI feature (fabricated
+    distractor). Reviewed and written up in full in
+    [[5. Security — OCI IAM, WAF, Certificates, Vault, Cloud Guard]]'s
+    "API Gateway's own native rate limiting — a real, fast DDoS lever,
+    but a partial one" section (Edge and network protection). Also
+    documented in [[14. Serverless — OCI Functions, Events, API
+    Gateway]].
 15. **VNIC-blocked subnet deletion: use the CLI (`oci network vnic get`)
     to find the parent resource, not the Console search box.** Missed on
     Practice Exam 997-26 Q6 (my doc-based assessment — see caveat in
