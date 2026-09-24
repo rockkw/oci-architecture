@@ -247,31 +247,42 @@ since they were never actually attempted and self-graded.
     retention, structure, and IAM policy scope" section — that note was
     right all along; only the separate Quizlet-bank guess needed
     correcting.
-11. **Virtual Private Vault selection criteria — exact two triggers.**
-    `[[practice-1-updated]]` Q35 (medium confidence: more key versions than
-    a shared vault's limit, and greater isolation) partially overlaps with
-    this session's own confirmed material (Note 5's "virtual private vault"
-    section: dedicated HSM partition, distinct pricing) but the *key-version
-    ceiling* trigger specifically was never independently verified this
-    session — worth confirming the exact number against live docs.
-12. **Instance pool scale-in termination order: oldest instance first
-    within a fault domain, NOT newest.** Missed on Practice Exam 997-26 Q2
-    — selected "newest" in an otherwise word-for-word correct option
-    (AD-balance → FD-balance → terminate-first). Verified directly against
-    Oracle's Autoscaling docs. A single-word distractor swap on a
-    plausible-sounding option — the exact trap pattern this file already
-    warns about, but landed on anyway because the rest of the sentence read
-    as correct. See [[3. Compute — OCI Compute, Instance Pools, Load
-    Balancers, Volumes]].
-13. **No "auto-decrypt" mechanism exists for Vault-encrypted Oracle
-    Functions config variables — decryption is an explicit runtime API
-    call in function code.** Missed on Practice Exam 997-26 Q3 (my
-    doc-based assessment, not an in-app answer key — see [[MyLearn Skill
-    Check Questions]] for the caveat). Selected an option describing
-    automatic encrypt/decrypt via a config-variable reference; the real,
-    documented pattern is encrypt offline → store ciphertext as a config
-    variable → function code calls the Vault/KMS Decrypt API at runtime.
-    See [[14. Serverless — OCI Functions, Events, API Gateway]].
+11. ✅ **COMPLETE — original guess was PARTIALLY WRONG, now corrected.**
+    Virtual Private Vault's two real, documented selection triggers (per
+    Oracle's own text: "If you don't require the greater degree of
+    isolation or the ability to back up the vault, you don't need a
+    virtual private vault") are **greater isolation** and **the ability
+    to back up the vault** (exclusive to Private Vault) — NOT "more key
+    versions than a shared vault's limit," which was the
+    `[[practice-1-updated]]` Q35 medium-confidence guess. That guess had
+    the key-version direction **backwards**: a Default vault has
+    essentially no hard key-version ceiling (pay-per-version), while
+    Virtual Private Vault is the one with a capped allocation (1,000
+    included by default, soft 1,000/hard 3,000 limit) — the opposite of
+    "more headroom." Full correction now in [[5. Security — OCI IAM,
+    WAF, Certificates, Vault, Cloud Guard]]'s "Virtual private vault"
+    section.
+12. ✅ **COMPLETE** — **Instance pool scale-in termination order: oldest
+    instance first within a fault domain, NOT newest.** Missed on
+    Practice Exam 997-26 Q2 — selected "newest" in an otherwise
+    word-for-word correct option (AD-balance → FD-balance →
+    terminate-first). Verified directly against Oracle's Autoscaling
+    docs. A single-word distractor swap on a plausible-sounding option —
+    the exact trap pattern this file already warns about, but landed on
+    anyway because the rest of the sentence read as correct. Full
+    write-up in [[3. Compute — OCI Compute, Instance Pools, Load
+    Balancers, Volumes]]'s "High availability and scaling" section.
+13. ✅ **COMPLETE** — **No "auto-decrypt" mechanism exists for
+    Vault-encrypted Oracle Functions config variables — decryption is an
+    explicit runtime API call in function code.** Missed on Practice
+    Exam 997-26 Q3 (my doc-based assessment, not an in-app answer key —
+    see [[MyLearn Skill Check Questions]] for the caveat). Selected an
+    option describing automatic encrypt/decrypt via a config-variable
+    reference; the real, documented pattern is encrypt offline → store
+    ciphertext as a config variable → function code calls the Vault/KMS
+    Decrypt API at runtime. Full write-up in [[14. Serverless — OCI
+    Functions, Events, API Gateway]]'s "OCI Functions architecture"
+    section.
 14. ✅ **COMPLETE** — **OCI API Gateway has a native rate-limiting request
     policy — the fastest DDoS mitigation for a time-constrained scenario,
     no new service required, but not a complete DDoS solution by
@@ -298,14 +309,17 @@ since they were never actually attempted and self-graded.
     deletion blocked by an attached VNIC" section; command itself also
     added to [[CLI Command Reference - OCI Architect Pro Study]]'s
     "Network Monitoring / Path Analyzer" section.
-16. **`oci kms crypto encrypt`/`decrypt` require the vault's Cryptographic
-    Endpoint, not the Management Endpoint — passing the wrong one is a
-    silent trap, not an obviously-labeled error.** Missed on Practice Exam
-    997-26 Q8 — misdiagnosed a `-management.kms.` endpoint as a missing
-    region instead of the wrong endpoint type. This exact fact was already
-    documented in Note 5 before taking the question — a reminder to
-    actually apply what's written, not just have it recorded. See
-    [[5. Security — OCI IAM, WAF, Certificates, Vault, Cloud Guard]].
+16. ✅ **COMPLETE** — **`oci kms crypto encrypt`/`decrypt` require the
+    vault's Cryptographic Endpoint, not the Management Endpoint —
+    passing the wrong one is a silent trap, not an obviously-labeled
+    error.** Missed on Practice Exam 997-26 Q8 — misdiagnosed a
+    `-management.kms.` endpoint as a missing region instead of the wrong
+    endpoint type. This exact fact was already documented in Note 5
+    before taking the question — a reminder to actually apply what's
+    written, not just have it recorded. Full write-up and direct
+    practice-exam cross-reference in [[5. Security — OCI IAM, WAF,
+    Certificates, Vault, Cloud Guard]]'s "Every vault exposes two
+    distinct, separately-addressed API endpoints" section.
 17. ✅ **COMPLETE** — **"A microservice" (the individual unit) vs.
     "microservices architecture" (the overall pattern) are different
     definitions — read exam stems literally.** Missed on Practice Exam
