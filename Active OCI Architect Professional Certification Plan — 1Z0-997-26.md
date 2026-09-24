@@ -145,11 +145,17 @@ since they were never actually attempted and self-graded.
    policy option that isn't real OCIR terminology at all) — the real second
    policy type alongside Global is called **Custom**, scoped to specific
    repositories explicitly added to it.
-6. **Terraform resource *type* is provider-specific; resource *name* is
-   not.** Missed on Skill Check: Deliver Infrastructure-as-code Q5 (the
-   FALSE-statement question) — `resource "<TYPE>" "<NAME>" {}` has two
-   separate naming layers, and it's easy to conflate them under the generic
-   phrase "resource names."
+6. ✅ **COMPLETE** — **Terraform resource *type* is provider-specific;
+   resource *name* is not.** Missed on Skill Check: Deliver
+   Infrastructure-as-code Q5 (the FALSE-statement question) —
+   `resource "<TYPE>" "<NAME>" {}` has two separate naming layers, and
+   it's easy to conflate them under the generic phrase "resource names."
+   Also covers the two other facts from that same question (provider
+   aliases are real; CLI and provider versions are independently
+   declared) and the Terraform-is-IaC-not-IaaS category distinction.
+   Full write-up now in [[1. DevOps — OCI DevOps, CI-CD, Observability]]'s
+   new "Terraform / Resource Manager — syntax precision, not just IaC
+   concepts" section.
 7. **Monitoring is one of Oracle's three canonical HA design pillars
    (Redundancy/Failover/Monitoring) — not Scalability.** Missed, uncorrected,
    on Skill Check: Design Scalable and Elastic Solutions... Q5 — a real
@@ -232,15 +238,19 @@ since they were never actually attempted and self-graded.
     but a partial one" section (Edge and network protection). Also
     documented in [[14. Serverless — OCI Functions, Events, API
     Gateway]].
-15. **VNIC-blocked subnet deletion: use the CLI (`oci network vnic get`)
-    to find the parent resource, not the Console search box.** Missed on
-    Practice Exam 997-26 Q6 (my doc-based assessment — see caveat in
-    [[MyLearn Skill Check Questions]]). Verified against Oracle's VCN
-    Troubleshooting guide: the documented method reads the VNIC's
-    `display-name` via CLI to reveal its parent resource (load balancer,
-    mount target, DB node); pasting the OCID into the Console search box
-    isn't the documented approach. See [[9. Networking — OCI VCN, DRG,
-    Gateways, Load Balancers]].
+15. ✅ **COMPLETE** — **VNIC-blocked subnet deletion: use the CLI
+    (`oci network vnic get --vnic-id <VNIC_OCID>`) to find the parent
+    resource, not the Console search box.** Missed on Practice Exam
+    997-26 Q6 (my doc-based assessment — see caveat in [[MyLearn Skill
+    Check Questions]]). Verified against Oracle's VCN Troubleshooting
+    guide: the documented method reads the VNIC's `display-name` via CLI
+    to reveal its parent resource (load balancer, mount target, DB node);
+    pasting the OCID into the Console search box isn't the documented
+    approach. Full remediation sequence in [[9. Networking — OCI VCN,
+    DRG, Gateways, Load Balancers]]'s "Troubleshooting: subnet/VCN
+    deletion blocked by an attached VNIC" section; command itself also
+    added to [[CLI Command Reference - OCI Architect Pro Study]]'s
+    "Network Monitoring / Path Analyzer" section.
 16. **`oci kms crypto encrypt`/`decrypt` require the vault's Cryptographic
     Endpoint, not the Management Endpoint — passing the wrong one is a
     silent trap, not an obviously-labeled error.** Missed on Practice Exam

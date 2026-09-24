@@ -226,6 +226,12 @@ oci vn-monitoring path-analysis get-path-analysis-adhoc \
 ```
 **Known gotcha: `oci vn-monitoring` is its own service group, not under `oci network`.** Also, a request can be perfectly well-formed and still fail with `"Not Authorized for Source or Destination Endpoint"` — this is a missing IAM policy grant for Path Analyzer's specific resource type, not a malformed request. Check `oci iam policy list` for a statement covering it before assuming the request itself is wrong.
 
+**Find what a VNIC belongs to when it's blocking a subnet/VCN delete** — a subnet-delete error names the blocking VNIC's OCID, but many resources (load balancers, File Storage mount targets, DB nodes) attach VNICs invisibly, so the OCID alone doesn't say what to actually delete. The documented method (verified against Oracle's own VCN Troubleshooting guide) is the CLI, not the Console search box:
+```bash
+oci network vnic get --vnic-id <VNIC_OCID>
+```
+The response's **`display-name`** field reveals the parent resource — e.g. `"VNIC for LB ocid1.loadbalancer.oc1.phx.<...>"` for a load balancer, a mount-target-style name for File Storage, or the DB node's own OCID. Delete/reconfigure that parent resource (which detaches its VNIC automatically), repeat for any other blocking VNICs, then delete the subnet. See [[9. Networking — OCI VCN, DRG, Gateways, Load Balancers]]'s "Troubleshooting: subnet/VCN deletion blocked by an attached VNIC" section for the full remediation sequence.
+
 ---
 
 ## Service limits / quota checks
