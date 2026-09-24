@@ -94,16 +94,27 @@ Tenant sign in -
 - [ ] Take the official practice exam/skill check from the learning path. Log every miss by domain, misconception, and missing service comparison; do not merely record the score.
 - [ ] Deliverable: ranked gap list and an error log with the corrected architectural rule for each miss.
 
-## Top 10 items to review before the exam
+## Top items to review before the exam
 
-Running list. Items 1–8 come from real, own-answer misses across all five
-MyLearn skill checks taken so far (see [[MyLearn Skill Check Questions]]
-for full question text and rationale) — not guessed weak spots, only things
-actually gotten wrong first, whether caught before submitting or not.
-Items 9–11 are lower-confidence answer-key entries from the separate
-Quizlet-derived practice bank ([[practice-1-updated]], older 1Z0-997-22
-exam version but same tested concepts) flagged as "best-guess" there —
-included because they're plausible real gaps, but weighted lower than 1–8
+Running list, no longer capped at 10. Items 1–8 come from real, own-answer
+misses across all five MyLearn skill checks taken so far (see [[MyLearn
+Skill Check Questions]] for full question text and rationale) — not
+guessed weak spots, only things actually gotten wrong first, whether
+caught before submitting or not. Items 9–11 are lower-confidence
+answer-key entries from the separate Quizlet-derived practice bank
+([[practice-1-updated]], older 1Z0-997-22 exam version but same tested
+concepts) flagged as "best-guess" there — included because they're
+plausible real gaps, but weighted lower than 1–8 since they were never
+actually attempted and self-graded. Items 12–17 come from the first 10
+questions of the official MyLearn **Practice Exam 997-26** (50 questions
+total, timed) — 6 misses out of 10 attempted so far, all logged live in
+[[MyLearn Skill Check Questions]] with the full question, options, and
+verification source. Items 13, 15, and 16 there are the model's own
+doc-verified assessment rather than confirmed by the exam's own answer
+key (no in-app grading screen was available at question-level) — flagged
+inline; re-verify against the exam's summary/grading screen once you
+finish it, and correct this list if any of those three turn out to
+actually match your originally selected answer.
 since they were never actually attempted and self-graded.
 
 1. **Network Firewall four-stage pipeline order** — Decryption Rules
@@ -181,6 +192,55 @@ since they were never actually attempted and self-graded.
     section: dedicated HSM partition, distinct pricing) but the *key-version
     ceiling* trigger specifically was never independently verified this
     session — worth confirming the exact number against live docs.
+12. **Instance pool scale-in termination order: oldest instance first
+    within a fault domain, NOT newest.** Missed on Practice Exam 997-26 Q2
+    — selected "newest" in an otherwise word-for-word correct option
+    (AD-balance → FD-balance → terminate-first). Verified directly against
+    Oracle's Autoscaling docs. A single-word distractor swap on a
+    plausible-sounding option — the exact trap pattern this file already
+    warns about, but landed on anyway because the rest of the sentence read
+    as correct. See [[3. Compute — OCI Compute, Instance Pools, Load
+    Balancers, Volumes]].
+13. **No "auto-decrypt" mechanism exists for Vault-encrypted Oracle
+    Functions config variables — decryption is an explicit runtime API
+    call in function code.** Missed on Practice Exam 997-26 Q3 (my
+    doc-based assessment, not an in-app answer key — see [[MyLearn Skill
+    Check Questions]] for the caveat). Selected an option describing
+    automatic encrypt/decrypt via a config-variable reference; the real,
+    documented pattern is encrypt offline → store ciphertext as a config
+    variable → function code calls the Vault/KMS Decrypt API at runtime.
+    See [[14. Serverless — OCI Functions, Events, API Gateway]].
+14. **OCI API Gateway has a native rate-limiting request policy — the
+    fastest DDoS mitigation for a time-constrained scenario, no new
+    service required.** Missed on Practice Exam 997-26 Q4 — selected "VCN
+    IP address segregation," which is not a real OCI feature (fabricated
+    distractor). Rate limiting is a request policy configured directly on
+    the API Gateway deployment. See [[14. Serverless — OCI Functions,
+    Events, API Gateway]].
+15. **VNIC-blocked subnet deletion: use the CLI (`oci network vnic get`)
+    to find the parent resource, not the Console search box.** Missed on
+    Practice Exam 997-26 Q6 (my doc-based assessment — see caveat in
+    [[MyLearn Skill Check Questions]]). Verified against Oracle's VCN
+    Troubleshooting guide: the documented method reads the VNIC's
+    `display-name` via CLI to reveal its parent resource (load balancer,
+    mount target, DB node); pasting the OCID into the Console search box
+    isn't the documented approach. See [[9. Networking — OCI VCN, DRG,
+    Gateways, Load Balancers]].
+16. **`oci kms crypto encrypt`/`decrypt` require the vault's Cryptographic
+    Endpoint, not the Management Endpoint — passing the wrong one is a
+    silent trap, not an obviously-labeled error.** Missed on Practice Exam
+    997-26 Q8 — misdiagnosed a `-management.kms.` endpoint as a missing
+    region instead of the wrong endpoint type. This exact fact was already
+    documented in Note 5 before taking the question — a reminder to
+    actually apply what's written, not just have it recorded. See
+    [[5. Security — OCI IAM, WAF, Certificates, Vault, Cloud Guard]].
+17. **"A microservice" (the individual unit) vs. "microservices
+    architecture" (the overall pattern) are different definitions — read
+    exam stems literally.** Missed on Practice Exam 997-26 Q9 — picked the
+    architecture-style definition when the question asked what a single
+    microservice *is*. Oracle's own framing: a microservice is small, has
+    one well-defined responsibility, and runs in its own process. See
+    [[14. Serverless — OCI Functions, Events, API Gateway]].
 
 ### Week 4 — Retrieval practice and booking gate
 
