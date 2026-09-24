@@ -1,0 +1,829 @@
+diff --git a/deploy/magnetlookup.env.example b/deploy/magnetlookup.env.example
+index 7e27106..0da3eff 100644
+--- a/deploy/magnetlookup.env.example
++++ b/deploy/magnetlookup.env.example
+@@ -19,8 +19,16 @@ MAGNET_SEARCH_FILE_2=
+ # URL templates — start from urls.txt.sample shipped alongside this file.
+ MAGNET_URLS_FILE=/opt/magnetlookup/data/urls.txt
+ 
+-# SQLite library, logs, and HTML/CSV output.
++# Library database: Oracle Autonomous AI Database over its private endpoint
++# (see magnet_db.py). DSN = the TLS connect string for the _tp service,
++# port 1522. Password = the mymagnet-adb-app-password Vault secret.
++MAGNET_DB_USER=magnet
++MAGNET_DB_PASSWORD=
++MAGNET_DB_DSN=
++# No longer used by the app; only migrate_sqlite_to_adb.py reads it.
+ MAGNET_DB_FILE=/opt/magnetlookup/data/magnet_library.db
++
++# Logs and HTML/CSV output.
+ MAGNET_LOG_DIR=/opt/magnetlookup/data/logs
+ MAGNET_OUTPUT_DIR=/opt/magnetlookup/data/magnet_results
+ 
+diff --git a/deploy/setup.sh b/deploy/setup.sh
+index 70e0ca9..f11ee76 100755
+--- a/deploy/setup.sh
++++ b/deploy/setup.sh
+@@ -53,7 +53,7 @@ python3 -m venv "$VENV_DIR"
+ # Core deps only — Selenium/webdriver-manager are skipped since the systemd
+ # unit runs with --no-js. Add them (`pip install selenium webdriver-manager`
+ # + a Chromium install) only if you point urls.txt at a JS-rendered site.
+-"$VENV_DIR"/bin/pip install requests==2.31.0 beautifulsoup4==4.12.3 lxml==6.1.1
++"$VENV_DIR"/bin/pip install requests==2.31.0 beautifulsoup4==4.12.3 lxml==6.1.1 "oracledb>=2.2"
+ 
+ echo "==> Seeding config.ini env-var overrides"
+ mkdir -p /etc/magnetlookup
+diff --git a/magnet_db.py b/magnet_db.py
+new file mode 100644
+index 0000000..062baf6
+--- /dev/null
++++ b/magnet_db.py
+@@ -0,0 +1,103 @@
++"""
++magnet_db.py — Oracle Autonomous AI Database connection for MyMagnet.
++
++Replaces the per-node SQLite file with one shared database, reached over
++the ADB private endpoint with python-oracledb in Thin mode (pure Python,
++no Oracle Client libraries, no wallet: the database has mTLS turned off,
++so TLS with a user/password is enough).
++
++Settings come from the environment (/etc/magnetlookup/env):
++  MAGNET_DB_USER      default "magnet"
++  MAGNET_DB_PASSWORD  the mymagnet-adb-app-password Vault secret
++  MAGNET_DB_DSN       the ADB's TLS connect string for the _tp service
++                      (Terraform output connection_profiles), port 1522
++
++The wrapper keeps the sqlite3 call shape the app already uses —
++conn.execute(sql, params) with "?" placeholders, rows readable as dicts,
++conn.commit()/close() — so the call sites barely change. SQL text itself
++still had to move to Oracle syntax (MERGE, FETCH FIRST, LISTAGG).
++"""
++
++import os
++import re
++
++import oracledb
++
++_pool = None
++
++
++def _get_pool():
++    # One small pool per process. webserver.py opens a connection per HTTP
++    # request; a TLS handshake to ADB per request would add noticeable
++    # latency, so connections are reused. close() returns them to the pool.
++    global _pool
++    if _pool is None:
++        _pool = oracledb.create_pool(
++            user=os.environ.get('MAGNET_DB_USER', 'magnet'),
++            password=os.environ['MAGNET_DB_PASSWORD'],
++            dsn=os.environ['MAGNET_DB_DSN'],
++            min=1, max=4, increment=1,
++        )
++    return _pool
++
++
++_QMARK = re.compile(r"\?")
++
++
++def _to_oracle_binds(sql: str) -> str:
++    """Rewrite sqlite "?" placeholders as Oracle positional :1, :2, ...
++
++    Naive on purpose: none of the app's SQL has a literal "?" inside a
++    string constant. Values that contain "?" are bind values, not SQL, so
++    they are unaffected.
++    """
++    n = 0
++
++    def repl(_m):
++        nonlocal n
++        n += 1
++        return f':{n}'
++    return _QMARK.sub(repl, sql)
++
++
++def _dict_rows(cursor):
++    # Oracle reports unquoted column names in upper case; the app and its
++    # JSON API expect the lower-case names sqlite3.Row gave.
++    cols = [d[0].lower() for d in cursor.description]
++    cursor.rowfactory = lambda *vals: dict(zip(cols, vals))
++
++
++class Connection:
++    def __init__(self, raw):
++        self._raw = raw
++
++    def execute(self, sql: str, params=()):
++        cur = self._raw.cursor()
++        cur.execute(_to_oracle_binds(sql), list(params))
++        if cur.description:
++            _dict_rows(cur)
++        return cur
++
++    def insert_returning_id(self, sql: str, params=()) -> int:
++        """INSERT ... and return the new identity value (sqlite's
++        cursor.lastrowid). `sql` must not include the RETURNING clause."""
++        cur = self._raw.cursor()
++        new_id = cur.var(int)
++        cur.execute(_to_oracle_binds(sql + ' RETURNING id INTO ?'),
++                    list(params) + [new_id])
++        return int(new_id.getvalue()[0])
++
++    def commit(self):
++        self._raw.commit()
++
++    def rollback(self):
++        self._raw.rollback()
++
++    def close(self):
++        # Returns the connection to the pool. Uncommitted work is rolled
++        # back, same as closing a sqlite3 connection.
++        self._raw.close()
++
++
++def connect() -> Connection:
++    return Connection(_get_pool().acquire())
+diff --git a/magnetlookup.py b/magnetlookup.py
+index 587a703..8125c25 100644
+--- a/magnetlookup.py
++++ b/magnetlookup.py
+@@ -58,7 +58,7 @@ import time
+ import argparse
+ import subprocess
+ import webbrowser
+-import sqlite3
++import magnet_db
+ import logging
+ import hashlib
+ import configparser as _cp
+@@ -846,96 +846,42 @@ def setup_logging(log_dir: str | None = None) -> logging.Logger:
+ log = logging.getLogger('magnetlookup')
+ 
+ # ══════════════════════════════════════════════════════════════════════════
+-# SQLite database
++# Database (Oracle Autonomous AI Database — see magnet_db.py)
+ # ══════════════════════════════════════════════════════════════════════════
+ 
+-DB_SCHEMA = """
+-CREATE TABLE IF NOT EXISTS searches (
+-    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+-    run_at      TEXT    NOT NULL,
+-    terms       TEXT    NOT NULL,
+-    js_mode     INTEGER NOT NULL DEFAULT 0,
+-    total_found INTEGER NOT NULL DEFAULT 0,
+-    dupes_removed INTEGER NOT NULL DEFAULT 0
+-);
+-
+-CREATE TABLE IF NOT EXISTS torrents (
+-    info_hash   TEXT PRIMARY KEY,
+-    title       TEXT NOT NULL,
+-    size        TEXT,
+-    best_seeds  INTEGER NOT NULL DEFAULT 0,
+-    best_leeches INTEGER NOT NULL DEFAULT 0,
+-    first_seen  TEXT NOT NULL,
+-    last_seen   TEXT NOT NULL,
+-    magnet      TEXT NOT NULL
+-);
+-
+-CREATE TABLE IF NOT EXISTS torrent_sites (
+-    info_hash   TEXT NOT NULL REFERENCES torrents(info_hash),
+-    site        TEXT NOT NULL,
+-    PRIMARY KEY (info_hash, site)
+-);
+-
+-CREATE TABLE IF NOT EXISTS search_results (
+-    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+-    search_id   INTEGER NOT NULL REFERENCES searches(id),
+-    info_hash   TEXT    NOT NULL REFERENCES torrents(info_hash),
+-    search_term TEXT    NOT NULL,
+-    seeds       INTEGER NOT NULL DEFAULT 0
+-);
+-
+-CREATE TABLE IF NOT EXISTS categories (
+-    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+-    name        TEXT UNIQUE NOT NULL
+-);
+-
+-CREATE TABLE IF NOT EXISTS search_terms (
+-    term        TEXT PRIMARY KEY,
+-    category    TEXT NOT NULL DEFAULT 'Default',
+-    first_used  TEXT NOT NULL,
+-    last_used   TEXT NOT NULL,
+-    use_count   INTEGER NOT NULL DEFAULT 1
+-);
+-
+-CREATE INDEX IF NOT EXISTS idx_sr_search   ON search_results(search_id);
+-CREATE INDEX IF NOT EXISTS idx_sr_term     ON search_results(search_term);
+-CREATE INDEX IF NOT EXISTS idx_sr_hash     ON search_results(info_hash);
+-CREATE INDEX IF NOT EXISTS idx_t_seeds     ON torrents(best_seeds DESC);
+-CREATE INDEX IF NOT EXISTS idx_t_seen      ON torrents(last_seen DESC);
+-CREATE INDEX IF NOT EXISTS idx_terms_used  ON search_terms(last_used DESC);
+-CREATE INDEX IF NOT EXISTS idx_terms_cat   ON search_terms(category);
+-"""
++# The schema is no longer created here: it lives in the capstone repo's
++# lab-capstone-adb-stack/sql/03_schema.sql and is applied once by an admin.
+ 
+-def open_db(db_path: str) -> sqlite3.Connection:
+-    Path(db_path).parent.mkdir(parents=True, exist_ok=True)
+-    conn = sqlite3.connect(db_path)
+-    conn.row_factory = sqlite3.Row
+-    conn.executescript(DB_SCHEMA)
+-    conn.commit()
+-    log.info(f'Database: {db_path}')
++def open_db(db_path: str = '') -> magnet_db.Connection:
++    # db_path (--db) is ignored; kept so existing callers and watch_terms.py
++    # don't break. Connection settings come from MAGNET_DB_* env vars.
++    conn = magnet_db.connect()
++    log.info('Database: Autonomous Database (MAGNET_DB_DSN)')
+     return conn
+ 
+-def write_db_term(conn: sqlite3.Connection,
++def write_db_term(conn: magnet_db.Connection,
+                   term_results: list[dict],
+                   label: str,
+                   category: str,
+                   js_mode: bool):
+     """
+-    Persist results for a single search term to SQLite and commit immediately.
++    Persist results for a single search term and commit immediately.
+     Called once per term so progress is saved even if a later term fails.
+     """
+     now = datetime.now().isoformat(timespec='seconds')
+ 
+     deduped, deduped_count = deduplicate(term_results)
+ 
+-    cur = conn.execute(
++    search_id = conn.insert_returning_id(
+         "INSERT INTO searches (run_at, terms, js_mode, total_found, dupes_removed) "
+         "VALUES (?, ?, ?, ?, ?)",
+         (now, label, int(js_mode), len(deduped), deduped_count)
+     )
+-    search_id = cur.lastrowid
+ 
+-    conn.execute("INSERT OR IGNORE INTO categories (name) VALUES (?)", (category,))
++    conn.execute(
++        "MERGE INTO categories c USING (SELECT ? AS name FROM dual) s "
++        "ON (c.name = s.name) "
++        "WHEN NOT MATCHED THEN INSERT (name) VALUES (s.name)", (category,))
+ 
+     for r in deduped:
+         ih = r.get('info_hash', '')
+@@ -954,22 +900,35 @@ def write_db_term(conn: sqlite3.Connection,
+         except ValueError:
+             pass
+ 
++        # New titles get their embedding computed in the database by the
++        # ONNX model (AI Vector Search); existing rows keep theirs.
+         conn.execute("""
+-            INSERT INTO torrents (info_hash, title, size, best_seeds,
+-                                  best_leeches, first_seen, last_seen, magnet)
+-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+-            ON CONFLICT(info_hash) DO UPDATE SET
+-                best_seeds   = MAX(best_seeds, excluded.best_seeds),
+-                best_leeches = MAX(best_leeches, excluded.best_leeches),
+-                last_seen    = excluded.last_seen,
+-                magnet       = CASE WHEN excluded.best_seeds >= best_seeds
+-                                    THEN excluded.magnet ELSE magnet END
++            MERGE INTO torrents t
++            USING (SELECT ? AS info_hash, ? AS title, ? AS sz, ? AS seeds,
++                          ? AS leeches, ? AS seen, ? AS magnet FROM dual) s
++            ON (t.info_hash = s.info_hash)
++            WHEN MATCHED THEN UPDATE SET
++                t.best_seeds   = GREATEST(t.best_seeds, s.seeds),
++                t.best_leeches = GREATEST(t.best_leeches, s.leeches),
++                t.last_seen    = s.seen,
++                t.magnet       = CASE WHEN s.seeds >= t.best_seeds
++                                      THEN s.magnet ELSE t.magnet END
++            WHEN NOT MATCHED THEN INSERT
++                (info_hash, title, torrent_size, best_seeds, best_leeches,
++                 first_seen, last_seen, magnet, title_vec)
++            VALUES (s.info_hash, s.title, s.sz, s.seeds, s.leeches,
++                    s.seen, s.seen, s.magnet,
++                    VECTOR_EMBEDDING(all_minilm_l12_v2 USING s.title AS data))
+         """, (ih, r['title'], r.get('size', '?'), seeds, leeches,
+-              now, now, r['magnet']))
++              now, r['magnet']))
+ 
+         for site in r.get('found_on', [urlparse(r['source_url']).netloc]):
+             conn.execute(
+-                "INSERT OR IGNORE INTO torrent_sites (info_hash, site) VALUES (?, ?)",
++                "MERGE INTO torrent_sites ts "
++                "USING (SELECT ? AS info_hash, ? AS site FROM dual) s "
++                "ON (ts.info_hash = s.info_hash AND ts.site = s.site) "
++                "WHEN NOT MATCHED THEN INSERT (info_hash, site) "
++                "VALUES (s.info_hash, s.site)",
+                 (ih, site)
+             )
+ 
+@@ -980,14 +939,17 @@ def write_db_term(conn: sqlite3.Connection,
+         )
+ 
+     conn.execute(
+-        "INSERT INTO search_terms "
++        "MERGE INTO search_terms st "
++        "USING (SELECT ? AS term, ? AS category, ? AS used FROM dual) s "
++        "ON (st.term = s.term) "
++        "WHEN MATCHED THEN UPDATE SET "
++        "    st.category  = s.category, "
++        "    st.last_used = s.used, "
++        "    st.use_count = st.use_count + 1 "
++        "WHEN NOT MATCHED THEN INSERT "
+         "    (term, category, first_used, last_used, use_count) "
+-        "VALUES (?, ?, ?, ?, 1) "
+-        "ON CONFLICT(term) DO UPDATE SET "
+-        "    category  = excluded.category, "
+-        "    last_used = excluded.last_used, "
+-        "    use_count = use_count + 1",
+-        (label, category, now, now)
++        "VALUES (s.term, s.category, s.used, s.used, 1)",
++        (label, category, now)
+     )
+ 
+     conn.commit()
+@@ -1497,11 +1459,11 @@ def parse_args():
+     )
+     p.add_argument(
+         '--db', metavar='PATH', default=DEFAULT_DB_FILE,
+-        help=f'SQLite database path (default: {DEFAULT_DB_FILE})'
++        help='Ignored (the database is set by MAGNET_DB_* env vars); kept for compatibility'
+     )
+     p.add_argument(
+         '--no-db', action='store_true',
+-        help='Skip writing to the SQLite database (HTML/CSV only)'
++        help='Skip writing to the database (HTML/CSV only)'
+     )
+     p.add_argument(
+         '--log-dir', metavar='PATH', default=None,
+@@ -1629,6 +1591,9 @@ def main():
+                 write_db_term(conn, term_results, label, category, js_mode)
+             except Exception as e:
+                 log.error(f'DB write failed for [{label}]: {e}')
++                # Drop this term's partial writes so the next term's
++                # commit doesn't commit them.
++                conn.rollback()
+                 had_error = True
+ 
+     if conn is not None:
+diff --git a/migrate_sqlite_to_adb.py b/migrate_sqlite_to_adb.py
+new file mode 100644
+index 0000000..3362f02
+--- /dev/null
++++ b/migrate_sqlite_to_adb.py
+@@ -0,0 +1,157 @@
++#!/usr/bin/env python3
++"""
++migrate_sqlite_to_adb.py — one-time copy of a MyMagnet SQLite library into
++the Oracle Autonomous AI Database schema (lab-capstone-adb-stack/sql/03).
++
++Run once per SQLite file, from an instance (the ADB is reachable only from
++the private subnet), with the same MAGNET_DB_* env vars the app uses:
++
++    set -a; . /etc/magnetlookup/env; set +a
++    /opt/magnetlookup/venv/bin/python migrate_sqlite_to_adb.py \
++        /opt/magnetlookup/data/magnet_library.db
++
++The two instances each have their OWN SQLite file (no replication until
++now). Run it on instance 1 first, then on instance 2 with --merge:
++
++  * first run (empty target): ids are copied as-is, so search_results
++    still point at the right searches rows.
++  * --merge: torrents/sites/categories/search_terms are merged by their
++    natural keys (seeds take the max, use_count adds up); searches get
++    new ids and their search_results are re-pointed.
++
++Embeddings are NOT computed here; run sql/04_embeddings_and_index.sql
++afterwards (one set-based UPDATE is faster than per-row calls).
++"""
++
++import argparse
++import sqlite3
++import sys
++
++import magnet_db
++
++TORRENT_MERGE = """
++MERGE INTO torrents t
++USING (SELECT ? AS info_hash, ? AS title, ? AS sz, ? AS seeds, ? AS leeches,
++              ? AS first_seen, ? AS last_seen, ? AS magnet FROM dual) s
++ON (t.info_hash = s.info_hash)
++WHEN MATCHED THEN UPDATE SET
++    t.magnet       = CASE WHEN s.seeds >= t.best_seeds THEN s.magnet ELSE t.magnet END,
++    t.best_seeds   = GREATEST(t.best_seeds, s.seeds),
++    t.best_leeches = GREATEST(t.best_leeches, s.leeches),
++    t.first_seen   = LEAST(t.first_seen, s.first_seen),
++    t.last_seen    = GREATEST(t.last_seen, s.last_seen)
++WHEN NOT MATCHED THEN INSERT
++    (info_hash, title, torrent_size, best_seeds, best_leeches,
++     first_seen, last_seen, magnet)
++VALUES (s.info_hash, s.title, s.sz, s.seeds, s.leeches,
++        s.first_seen, s.last_seen, s.magnet)
++"""
++
++SITE_MERGE = """
++MERGE INTO torrent_sites ts
++USING (SELECT ? AS info_hash, ? AS site FROM dual) s
++ON (ts.info_hash = s.info_hash AND ts.site = s.site)
++WHEN NOT MATCHED THEN INSERT (info_hash, site) VALUES (s.info_hash, s.site)
++"""
++
++CATEGORY_MERGE = """
++MERGE INTO categories c USING (SELECT ? AS name FROM dual) s
++ON (c.name = s.name)
++WHEN NOT MATCHED THEN INSERT (name) VALUES (s.name)
++"""
++
++TERM_MERGE = """
++MERGE INTO search_terms st
++USING (SELECT ? AS term, ? AS category, ? AS first_used, ? AS last_used,
++              ? AS use_count FROM dual) s
++ON (st.term = s.term)
++WHEN MATCHED THEN UPDATE SET
++    st.category   = CASE WHEN s.last_used > st.last_used THEN s.category ELSE st.category END,
++    st.first_used = LEAST(st.first_used, s.first_used),
++    st.last_used  = GREATEST(st.last_used, s.last_used),
++    st.use_count  = st.use_count + s.use_count
++WHEN NOT MATCHED THEN INSERT (term, category, first_used, last_used, use_count)
++VALUES (s.term, s.category, s.first_used, s.last_used, s.use_count)
++"""
++
++
++def rows(src, sql):
++    return src.execute(sql).fetchall()
++
++
++def main():
++    ap = argparse.ArgumentParser(description=__doc__,
++                                 formatter_class=argparse.RawDescriptionHelpFormatter)
++    ap.add_argument('sqlite_file')
++    ap.add_argument('--merge', action='store_true',
++                    help='target already has data: remap searches ids instead of copying them')
++    args = ap.parse_args()
++
++    src = sqlite3.connect(f'file:{args.sqlite_file}?mode=ro', uri=True)
++    src.row_factory = sqlite3.Row
++    dst = magnet_db.connect()
++
++    existing = dst.execute("SELECT COUNT(*) AS n FROM searches").fetchone()['n']
++    if existing and not args.merge:
++        sys.exit(f'Target already has {existing} searches rows; re-run with --merge.')
++
++    # Parents before children (torrent_sites/search_results reference them).
++    # Oracle turns '' into NULL, so empty NOT NULL text gets a placeholder.
++    n = 0
++    for r in rows(src, "SELECT * FROM torrents"):
++        dst.execute(TORRENT_MERGE, (
++            r['info_hash'], r['title'] or '?', r['size'], r['best_seeds'],
++            r['best_leeches'], r['first_seen'], r['last_seen'], r['magnet']))
++        n += 1
++    print(f'torrents:       {n}')
++
++    n = 0
++    for r in rows(src, "SELECT * FROM torrent_sites"):
++        dst.execute(SITE_MERGE, (r['info_hash'], r['site']))
++        n += 1
++    print(f'torrent_sites:  {n}')
++
++    for r in rows(src, "SELECT * FROM categories"):
++        dst.execute(CATEGORY_MERGE, (r['name'],))
++
++    for r in rows(src, "SELECT * FROM search_terms"):
++        dst.execute(TERM_MERGE, (r['term'], r['category'] or 'Default',
++                                 r['first_used'], r['last_used'], r['use_count']))
++
++    # searches: copy ids on the first run; new ids with --merge.
++    id_map = {}
++    for r in rows(src, "SELECT * FROM searches ORDER BY id"):
++        vals = (r['run_at'], r['terms'], r['js_mode'], r['total_found'], r['dupes_removed'])
++        if args.merge:
++            id_map[r['id']] = dst.insert_returning_id(
++                "INSERT INTO searches (run_at, terms, js_mode, total_found, dupes_removed) "
++                "VALUES (?, ?, ?, ?, ?)", vals)
++        else:
++            dst.execute(
++                "INSERT INTO searches (id, run_at, terms, js_mode, total_found, dupes_removed) "
++                "VALUES (?, ?, ?, ?, ?, ?)", (r['id'],) + vals)
++            id_map[r['id']] = r['id']
++    print(f'searches:       {len(id_map)}')
++
++    n = 0
++    for r in rows(src, "SELECT * FROM search_results ORDER BY id"):
++        dst.execute(
++            "INSERT INTO search_results (search_id, info_hash, search_term, seeds) "
++            "VALUES (?, ?, ?, ?)",
++            (id_map[r['search_id']], r['info_hash'], r['search_term'], r['seeds']))
++        n += 1
++    print(f'search_results: {n}')
++
++    dst.commit()
++
++    # The first run inserts explicit searches ids into an identity column;
++    # move the identity past MAX(id) so the app's next INSERT doesn't
++    # collide. (Other tables' ids were generated, so they're already fine.)
++    dst.execute("ALTER TABLE searches MODIFY id "
++                "GENERATED BY DEFAULT ON NULL AS IDENTITY (START WITH LIMIT VALUE)")
++    dst.close()
++    print('Done. Next: sql/04_embeddings_and_index.sql')
++
++
++if __name__ == '__main__':
++    main()
+diff --git a/requirements.txt b/requirements.txt
+index 090b2e7..9662a29 100644
+--- a/requirements.txt
++++ b/requirements.txt
+@@ -6,6 +6,10 @@ requests==2.31.0
+ beautifulsoup4==4.12.3
+ lxml==5.2.1
+ 
++# Oracle Autonomous AI Database (Thin mode: no Oracle Client needed).
++# 2.2+ is needed for the VECTOR data type.
++oracledb>=2.2
++
+ # Only needed for --js (headless Chrome) mode:
+ selenium==4.21.0
+ webdriver-manager==4.0.1
+diff --git a/webserver.py b/webserver.py
+index 38e60b3..19e0b7c 100644
+--- a/webserver.py
++++ b/webserver.py
+@@ -2,7 +2,7 @@
+ """
+ webserver.py — Magnet Library Web Interface
+ 
+-Serves a dynamic web UI over the magnet_library.db SQLite database.
++Serves a dynamic web UI over the MyMagnet library (Oracle Autonomous AI Database).
+ No external dependencies — uses only Python stdlib.
+ 
+ Usage:
+@@ -28,7 +28,7 @@ import sys
+ import os
+ import json
+ import socket
+-import sqlite3
++import magnet_db
+ import argparse
+ import subprocess
+ import webbrowser
+@@ -115,63 +115,22 @@ CATEGORY_DIRS: dict[str, str] = _load_category_dirs()
+ # Database helpers
+ # ══════════════════════════════════════════════════════════════════════════
+ 
+-_DB_SCHEMA = """
+-CREATE TABLE IF NOT EXISTS searches (
+-    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+-    run_at      TEXT    NOT NULL,
+-    terms       TEXT    NOT NULL,
+-    js_mode     INTEGER NOT NULL DEFAULT 0,
+-    total_found INTEGER NOT NULL DEFAULT 0,
+-    dupes_removed INTEGER NOT NULL DEFAULT 0
+-);
+-CREATE TABLE IF NOT EXISTS torrents (
+-    info_hash   TEXT PRIMARY KEY,
+-    title       TEXT NOT NULL,
+-    size        TEXT,
+-    best_seeds  INTEGER NOT NULL DEFAULT 0,
+-    best_leeches INTEGER NOT NULL DEFAULT 0,
+-    first_seen  TEXT NOT NULL,
+-    last_seen   TEXT NOT NULL,
+-    magnet      TEXT NOT NULL
+-);
+-CREATE TABLE IF NOT EXISTS torrent_sites (
+-    info_hash   TEXT NOT NULL REFERENCES torrents(info_hash),
+-    site        TEXT NOT NULL,
+-    PRIMARY KEY (info_hash, site)
+-);
+-CREATE TABLE IF NOT EXISTS search_results (
+-    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+-    search_id   INTEGER NOT NULL REFERENCES searches(id),
+-    info_hash   TEXT    NOT NULL REFERENCES torrents(info_hash),
+-    search_term TEXT    NOT NULL,
+-    seeds       INTEGER NOT NULL DEFAULT 0
+-);
+-CREATE TABLE IF NOT EXISTS categories (
+-    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+-    name        TEXT UNIQUE NOT NULL
+-);
+-CREATE TABLE IF NOT EXISTS search_terms (
+-    term        TEXT PRIMARY KEY,
+-    category    TEXT NOT NULL DEFAULT 'Default',
+-    first_used  TEXT NOT NULL,
+-    last_used   TEXT NOT NULL,
+-    use_count   INTEGER NOT NULL DEFAULT 1
+-);
+-CREATE INDEX IF NOT EXISTS idx_sr_search  ON search_results(search_id);
+-CREATE INDEX IF NOT EXISTS idx_sr_term    ON search_results(search_term);
+-CREATE INDEX IF NOT EXISTS idx_sr_hash    ON search_results(info_hash);
+-CREATE INDEX IF NOT EXISTS idx_t_seeds    ON torrents(best_seeds DESC);
+-CREATE INDEX IF NOT EXISTS idx_t_seen     ON torrents(last_seen DESC);
+-CREATE INDEX IF NOT EXISTS idx_terms_used ON search_terms(last_used DESC);
+-CREATE INDEX IF NOT EXISTS idx_terms_cat  ON search_terms(category);
+-"""
++# Schema: lab-capstone-adb-stack/sql/03_schema.sql in the capstone repo.
++
++def get_db(db_path: str = '') -> magnet_db.Connection:
++    # db_path (--db) is ignored; settings come from MAGNET_DB_* env vars.
++    return magnet_db.connect()
++
+ 
+-def get_db(db_path: str) -> sqlite3.Connection:
+-    Path(db_path).parent.mkdir(parents=True, exist_ok=True)
+-    conn = sqlite3.connect(db_path, check_same_thread=False)
+-    conn.row_factory = sqlite3.Row
+-    conn.executescript(_DB_SCHEMA)
+-    return conn
++# torrents columns returned by the API. Listed rather than t.* so the
++# title_vec VECTOR column isn't serialised into every JSON response, and
++# torrent_size (SIZE is reserved in Oracle) keeps its old "size" key.
++T_COLS = ("t.info_hash, t.title, t.torrent_size AS \"SIZE\", t.best_seeds, "
++          "t.best_leeches, t.first_seen, t.last_seen, t.magnet")
++
++# Comma-joined site list for one torrent; replaces GROUP_CONCAT + GROUP BY.
++T_SITES = ("(SELECT LISTAGG(DISTINCT ts.site, ',') WITHIN GROUP (ORDER BY ts.site) "
++           "FROM torrent_sites ts WHERE ts.info_hash = {alias}.info_hash) AS sites")
+ 
+ 
+ def query(conn, sql: str, params=()) -> list[dict]:
+@@ -192,7 +151,7 @@ def api_stats(conn) -> dict:
+     sites    = query_one(conn,
+         "SELECT COUNT(DISTINCT site) AS n FROM torrent_sites")['n']
+     last_run = query_one(conn,
+-        "SELECT run_at FROM searches ORDER BY run_at DESC LIMIT 1")
++        "SELECT run_at FROM searches ORDER BY run_at DESC FETCH FIRST 1 ROWS ONLY")
+     return {
+         'total_torrents': total,
+         'total_searches': searches,
+@@ -234,9 +193,8 @@ def api_purge(conn) -> dict:
+               'searches', 'search_terms', 'categories']
+     for t in tables:
+         conn.execute(f'DELETE FROM {t}')
+-    # Reset SQLite autoincrement counters
+-    conn.execute("DELETE FROM sqlite_sequence WHERE name IN "
+-                 "('searches','search_results')")
++    # (SQLite's sqlite_sequence reset is dropped: Oracle identity columns
++    # just keep counting, which nothing in the app depends on.)
+     conn.commit()
+     return {'purged': True, 'tables': tables}
+ 
+@@ -246,19 +204,21 @@ def api_torrents(conn, q='', sort='best_seeds', order='desc',
+     allowed_sort = {'best_seeds', 'best_leeches', 'title', 'last_seen',
+                     'first_seen', 'size'}
+     sort  = sort  if sort  in allowed_sort else 'best_seeds'
++    if sort == 'size':
++        sort = 'torrent_size'
+     order = 'DESC' if order.upper() == 'DESC' else 'ASC'
+ 
+     params = []
+     where  = ['1=1']
+ 
+     if q:
+-        where.append("t.title LIKE ?")
++        where.append("UPPER(t.title) LIKE UPPER(?)")
+         params.append(f'%{q}%')
+ 
+     if term:
+         where.append("""t.info_hash IN (
+             SELECT DISTINCT info_hash FROM search_results
+-            WHERE search_term LIKE ?)""")
++            WHERE UPPER(search_term) LIKE UPPER(?))""")
+         params.append(f'%{term}%')
+ 
+     if category:
+@@ -269,16 +229,14 @@ def api_torrents(conn, q='', sort='best_seeds', order='desc',
+         params.append(category)
+ 
+     sql = f"""
+-        SELECT t.*,
+-               GROUP_CONCAT(DISTINCT ts.site) AS sites
++        SELECT {T_COLS},
++               {T_SITES.format(alias='t')}
+         FROM   torrents t
+-        LEFT JOIN torrent_sites ts ON ts.info_hash = t.info_hash
+         WHERE  {' AND '.join(where)}
+-        GROUP  BY t.info_hash
+         ORDER  BY t.{sort} {order}
+-        LIMIT  ? OFFSET ?
++        OFFSET ? ROWS FETCH NEXT ? ROWS ONLY
+     """
+-    params += [limit, offset]
++    params += [offset, limit]
+     rows = query(conn, sql, params)
+     for r in rows:
+         r['sites'] = r['sites'].split(',') if r['sites'] else []
+@@ -287,7 +245,7 @@ def api_torrents(conn, q='', sort='best_seeds', order='desc',
+ 
+ def api_torrent(conn, info_hash: str) -> dict | None:
+     t = query_one(conn,
+-        "SELECT * FROM torrents WHERE info_hash = ?", (info_hash,))
++        f"SELECT {T_COLS} FROM torrents t WHERE t.info_hash = ?", (info_hash,))
+     if not t:
+         return None
+     t['sites'] = [r['site'] for r in query(conn,
+@@ -315,23 +273,25 @@ def api_analyze(conn, search_id: int = 0) -> dict:
+     if search_id:
+         run = query_one(conn, "SELECT * FROM searches WHERE id = ?", (search_id,))
+     else:
+-        run = query_one(conn, "SELECT * FROM searches ORDER BY run_at DESC LIMIT 1")
++        run = query_one(conn, "SELECT * FROM searches ORDER BY run_at DESC "
++                              "FETCH FIRST 1 ROWS ONLY")
+     if not run:
+         return {}
+ 
+     sid = run['id']
+ 
+     # ── Full result set for this run ─────────────────────────────────────
+-    rows = query(conn, """
+-        SELECT t.title, t.best_seeds, t.best_leeches, t.size,
++    # SQLite's "GROUP BY sr.info_hash" kept one row per torrent; Oracle
++    # needs that spelled out: keep each torrent's first search_results row.
++    rows = query(conn, f"""
++        SELECT t.title, t.best_seeds, t.best_leeches, t.torrent_size AS "SIZE",
+                sr.search_term, st.category,
+-               GROUP_CONCAT(DISTINCT ts.site) AS sites
++               {T_SITES.format(alias='sr')}
+         FROM   search_results sr
+         JOIN   torrents t  ON t.info_hash  = sr.info_hash
+         JOIN   search_terms st ON st.term  = sr.search_term
+-        LEFT JOIN torrent_sites ts ON ts.info_hash = sr.info_hash
+-        WHERE  sr.search_id = ?
+-        GROUP  BY sr.info_hash
++        WHERE  sr.id IN (SELECT MIN(id) FROM search_results
++                         WHERE search_id = ? GROUP BY info_hash)
+         ORDER  BY sr.seeds DESC
+     """, (sid,))
+     for r in rows:
+@@ -497,28 +457,49 @@ def api_image_search(term: str, limit: int = 12) -> dict:
+ 
+ def api_searches(conn) -> list[dict]:
+     return query(conn,
+-        "SELECT * FROM searches ORDER BY run_at DESC LIMIT 100")
++        "SELECT * FROM searches ORDER BY run_at DESC FETCH FIRST 100 ROWS ONLY")
+ 
+ 
+ def api_search(conn, search_id: int) -> dict | None:
+     s = query_one(conn, "SELECT * FROM searches WHERE id = ?", (search_id,))
+     if not s:
+         return None
+-    s['results'] = query(conn, """
+-        SELECT t.title, t.size, t.best_seeds, t.magnet,
++    s['results'] = query(conn, f"""
++        SELECT t.title, t.torrent_size AS "SIZE", t.best_seeds, t.magnet,
+                sr.search_term, sr.seeds,
+-               GROUP_CONCAT(DISTINCT ts.site) AS sites
++               {T_SITES.format(alias='sr')}
+         FROM   search_results sr
+         JOIN   torrents t  ON t.info_hash  = sr.info_hash
+-        LEFT JOIN torrent_sites ts ON ts.info_hash = sr.info_hash
+-        WHERE  sr.search_id = ?
+-        GROUP  BY sr.info_hash
++        WHERE  sr.id IN (SELECT MIN(id) FROM search_results
++                         WHERE search_id = ? GROUP BY info_hash)
+         ORDER  BY sr.seeds DESC
+     """, (search_id,))
+     for r in s['results']:
+         r['sites'] = r['sites'].split(',') if r['sites'] else []
+     return s
+ 
++def api_similar(conn, q: str, limit: int = 20) -> list[dict]:
++    """
++    Titles semantically similar to q (AI Vector Search). The query text is
++    embedded in the database by the same ONNX model that embedded the
++    titles; ordering by cosine distance lets the HNSW index serve it.
++    """
++    if not q:
++        return []
++    limit = max(1, min(limit, 100))
++    return query(conn, f"""
++        SELECT {T_COLS},
++               VECTOR_DISTANCE(t.title_vec,
++                   VECTOR_EMBEDDING(all_minilm_l12_v2 USING ? AS data),
++                   COSINE) AS distance
++        FROM   torrents t
++        WHERE  t.title_vec IS NOT NULL
++        ORDER  BY VECTOR_DISTANCE(t.title_vec,
++                   VECTOR_EMBEDDING(all_minilm_l12_v2 USING ? AS data),
++                   COSINE)
++        FETCH APPROX FIRST ? ROWS ONLY
++    """, (q, q, limit))
++
+ # ══════════════════════════════════════════════════════════════════════════
+ # HTML page (single-page app served from Python)
+ # ══════════════════════════════════════════════════════════════════════════
+@@ -1874,7 +1855,7 @@ class Handler(BaseHTTPRequestHandler):
+                         row  = query_one(conn,
+                             "SELECT st.category FROM search_results sr "
+                             "JOIN search_terms st ON st.term = sr.search_term "
+-                            "WHERE sr.info_hash = ? LIMIT 1", (ih,))
++                            "WHERE sr.info_hash = ? FETCH FIRST 1 ROWS ONLY", (ih,))
+                         conn.close()
+                         category = row['category'] if row else ''
+                 result = api_transmission_add(
+@@ -1970,6 +1951,10 @@ class Handler(BaseHTTPRequestHandler):
+             elif path == '/api/image_search':
+                 self._send_json(api_image_search(qs1('q'), int(qs1('limit', '12'))))
+ 
++            # ── API: vector similarity search (?q=&limit=) ─────────────────
++            elif path == '/api/similar':
++                self._send_json(api_similar(conn, qs1('q'), int(qs1('limit', '20'))))
++
+             # ── API: search history ───────────────────────────────────────
+             elif path == '/api/searches':
+                 self._send_json(api_searches(conn))

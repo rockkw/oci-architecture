@@ -1,0 +1,3 @@
+fdk>=0.1.68
+oci>=2.100.0
+# The LLM call uses urllib from the standard library; no requests needed.

@@ -12,3 +12,7 @@ terraform/**/*.tfvars.json
 terraform/**/*.tfplan
 terraform/**/crash.log
 terraform/**/crash.*.log
+
+# Python
+__pycache__/
+.pytest_cache/

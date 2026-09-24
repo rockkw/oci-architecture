@@ -4,6 +4,13 @@ variable "cluster_id" { type = string }
 variable "private_subnet_id" { type = string }
 variable "ssh_public_key" { type = string }
 variable "kubernetes_version" { type = string }
+# lab-oke-stack's `workers_nsg_id` output. Required: the GPU nodes must be in
+# the same NSG as the CPU workers to register with the control plane.
+variable "workers_nsg_id" { type = string }
+variable "boot_volume_size_in_gbs" {
+  type    = number
+  default = 150
+}
 # GPU shapes available on OCI (region/tenancy availability and service-limit quota
 # vary — most require a limit increase from Oracle before they can be provisioned).
 # See: https://docs.oracle.com/en-us/iaas/Content/Compute/References/computeshapes.htm

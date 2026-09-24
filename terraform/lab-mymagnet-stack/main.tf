@@ -124,20 +124,6 @@ resource "oci_core_network_security_group_security_rule" "lb_ingress_http" {
   }
 }
 
-resource "oci_core_network_security_group_security_rule" "lb_ingress_https" {
-  network_security_group_id = oci_core_network_security_group.mymagnet_lb.id
-  direction                 = "INGRESS"
-  protocol                  = "6"
-  source                    = "0.0.0.0/0"
-  source_type               = "CIDR_BLOCK"
-  tcp_options {
-    destination_port_range {
-      min = 443
-      max = 443
-    }
-  }
-}
-
 resource "oci_core_network_security_group_security_rule" "lb_egress_all" {
   network_security_group_id = oci_core_network_security_group.mymagnet_lb.id
   direction                 = "EGRESS"
@@ -160,7 +146,10 @@ resource "oci_core_instance" "mymagnet_1" {
   compartment_id      = var.compartment_ocid
   availability_domain = data.oci_identity_availability_domains.ads.availability_domains[0].name
   display_name        = "mymagnet-instance-1"
-  shape               = "VM.Standard.A1.Flex"
+  # Explicit, distinct fault domains: both nodes had landed in FAULT-DOMAIN-2,
+  # so one hardware fault could take out the whole backend set.
+  fault_domain = "FAULT-DOMAIN-1"
+  shape        = "VM.Standard.A1.Flex"
 
   # AWS README sizes this at EC2 t4g.small (2 vCPU/2GB burstable ARM) —
   # OCI's closest equivalent shape/size for "single daily scrape job plus a
@@ -173,6 +162,12 @@ resource "oci_core_instance" "mymagnet_1" {
   source_details {
     source_type = "image"
     source_id   = data.oci_core_images.ubuntu.images[0].id
+  }
+
+  # The image data source returns the newest Ubuntu build, and a new
+  # source_id replaces the boot volume in place, wiping the running app.
+  lifecycle {
+    ignore_changes = [source_details[0].source_id]
   }
 
   create_vnic_details {
@@ -206,7 +201,10 @@ resource "oci_core_instance" "mymagnet_2" {
   compartment_id      = var.compartment_ocid
   availability_domain = data.oci_identity_availability_domains.ads.availability_domains[0].name
   display_name        = "mymagnet-instance-2"
-  shape               = "VM.Standard.A1.Flex"
+  # Explicit, distinct fault domains: both nodes had landed in FAULT-DOMAIN-2,
+  # so one hardware fault could take out the whole backend set.
+  fault_domain = "FAULT-DOMAIN-2"
+  shape        = "VM.Standard.A1.Flex"
 
   shape_config {
     ocpus         = 1
@@ -216,6 +214,12 @@ resource "oci_core_instance" "mymagnet_2" {
   source_details {
     source_type = "image"
     source_id   = data.oci_core_images.ubuntu.images[0].id
+  }
+
+  # The image data source returns the newest Ubuntu build, and a new
+  # source_id replaces the boot volume in place, wiping the running app.
+  lifecycle {
+    ignore_changes = [source_details[0].source_id]
   }
 
   create_vnic_details {
@@ -361,30 +365,12 @@ resource "oci_load_balancer_listener" "mymagnet_http" {
   protocol                 = "HTTP"
 }
 
-resource "oci_load_balancer_listener" "mymagnet_https" {
-  name                     = "mymagnet-https-listener"
-  load_balancer_id         = oci_load_balancer_load_balancer.mymagnet.id
-  default_backend_set_name = oci_load_balancer_backend_set.mymagnet.name
-  port                     = 443
-  protocol                 = "HTTP"
-
-  # certificate_ids (not the legacy certificate_name/inline-PEM pattern) is
-  # the argument for attaching an OCI Certificates service-managed
-  # certificate to an LB listener — confirmed against the provider's
-  # website docs for oci_load_balancer_listener's ssl_configuration block,
-  # which documents certificate_ids as "Ids for Oracle Cloud Infrastructure
-  # certificates service certificates. Currently only a single Id may be
-  # passed." certificate_name still exists on the same block for the older
-  # inline-PEM-via-oci_load_balancer_certificate pattern, deliberately not
-  # used here.
-  ssl_configuration {
-    certificate_ids         = [oci_certificates_management_certificate.mymagnet.id]
-    verify_peer_certificate = false
-    verify_depth            = 3
-  }
-}
-
-# --- OCI Certificates: Vault, Master Encryption Key, private CA, leaf cert ---
+# --- Vault + key ---
+# HTTPS (a private CA, leaf certificate and 443 listener) was removed on
+# 2026-09-24: the CA never reached ACTIVE, and the app is served over HTTP
+# on the LB. The likely fix (a certificateauthority dynamic group with
+# "use keys" + "manage objects") is written up in terraform/CAPSTONE.md,
+# Phase 1. The Vault and key stay for later phases.
 # No existing oci_kms_vault/oci_kms_key found anywhere else in this repo
 # (grepped terraform/ for oci_kms_vault and oci_certificates_* — no hits
 # outside this stack), so this provisions the minimal Vault + Key needed
@@ -415,88 +401,6 @@ resource "oci_kms_key" "mymagnet" {
   key_shape {
     algorithm = "RSA"
     length    = 256
-  }
-}
-
-# Private CA — ROOT_CA_GENERATED_INTERNALLY, matching the MyLearn scenario's
-# "OCI Certificates" chain (Vault/Key -> CA -> leaf certificate -> LB
-# listener) rather than an externally-issued or imported cert. Resource
-# name confirmed as oci_certificates_management_certificate_authority
-# against the provider's website docs (NOT oci_certificates_certificate_
-# authority, which doesn't exist as a resource — only as a data source
-# naming convention the prompt for this change guessed incorrectly).
-resource "oci_certificates_management_certificate_authority" "mymagnet" {
-  compartment_id = var.compartment_ocid
-  name           = "mymagnet-ca"
-  kms_key_id     = oci_kms_key.mymagnet.id
-
-  certificate_authority_config {
-    config_type = "ROOT_CA_GENERATED_INTERNALLY"
-
-    subject {
-      common_name = var.cert_common_name
-    }
-
-    # REAL BUG FOUND AND FIXED (see var.cert_valid_until in variables.tf for
-    # the full story): OCI Certificates Management's timeOfValidityNotAfter
-    # requires MILLISECOND precision — a bare-seconds RFC3339 value fails
-    # with 400-InvalidParameter "Unable to process JSON input" even though
-    # it's otherwise fully valid RFC3339. var.cert_valid_until must be
-    # supplied with explicit .000 milliseconds (e.g.
-    # 2027-09-18T17:24:03.000Z), confirmed by bisecting directly against the
-    # real API (bypassing Terraform and the OCI CLI's SDK wrapper) since the
-    # error message itself never named the actual field or format issue.
-    validity {
-      time_of_validity_not_after = var.cert_valid_until
-    }
-  }
-
-  # BLOCKED, NOT YET RESOLVED — real, reproducible failure against this
-  # exact key, confirmed multiple times: the CA reaches lifecycle_state
-  # FAILED with lifecycle_details "Authorization failed or requested
-  # resource not found: Key Id <this key's OCID>." This is NOT the
-  # timestamp bug above (fixed and confirmed separately) — it reproduces
-  # even with a fully correct, schema-valid payload sent directly to the
-  # raw API (bypassing Terraform and the OCI CLI's own SDK wrapper).
-  #
-  # Two IAM policies were tried against the real tenancy and BOTH failed to
-  # fix it, then were removed again (this stack's own oci_identity_policy
-  # resource above is unrelated — these were separate, out-of-band policies
-  # tested directly via `oci iam policy create`, never added to this file):
-  #   1. Allow service certificates to use keys in compartment id <compartment>
-  #   2. Allow service certificates to use key-delegate in compartment id <compartment>
-  # (2) matches Oracle's own documented semantics for a service using a
-  # customer's key on the customer's behalf (key-delegate, not keys) and
-  # was expected to fix this — it did not. Both were given time to
-  # propagate to the home region before retrying, ruling out a simple
-  # propagation-delay explanation.
-  #
-  # vault_type = "DEFAULT" (see oci_kms_vault.mymagnet below) may itself be
-  # the real blocker (untested: a VIRTUAL_PRIVATE/HSM-dedicated vault was
-  # never tried) — or there's a policy clause/scoping this wasn't correct
-  # yet (e.g. requiring `where target.key.id = '...'` rather than a
-  # compartment-wide grant), or something else entirely. Root cause is
-  # UNRESOLVED as of this comment. See terraform/LABS.md's lab-mymagnet-stack
-  # entry for the full investigation writeup before spending more time here.
-}
-
-resource "oci_certificates_management_certificate" "mymagnet" {
-  compartment_id = var.compartment_ocid
-  name           = "mymagnet-cert"
-
-  certificate_config {
-    config_type                     = "ISSUED_BY_INTERNAL_CA"
-    issuer_certificate_authority_id = oci_certificates_management_certificate_authority.mymagnet.id
-    certificate_profile_type        = "TLS_SERVER_OR_CLIENT"
-
-    subject {
-      common_name = var.cert_common_name
-    }
-
-    # Same timestamp() fix as the CA above — see that resource's comment.
-    validity {
-      time_of_validity_not_after = var.cert_valid_until
-    }
   }
 }
 

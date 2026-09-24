@@ -108,33 +108,3 @@ variable "backend_port" {
   type    = number
   default = 80
 }
-
-# Common name (CN) for the OCI Certificates leaf cert and its issuing CA's
-# subject — should match the DNS A record the Reserved Public IP
-# (oci_core_public_ip.mymagnet) resolves to, same as the original single-
-# instance design's implied Certbot CN would have.
-variable "cert_common_name" { type = string }
-
-# RFC3339 expiry for both the CA and leaf cert's validity block — a static
-# literal, NOT computed via timeadd(timestamp(), ...) inside main.tf
-# (timestamp() is unknown at plan time, which is its own separate problem
-# worth avoiding here regardless of the finding below).
-#
-# REAL BUG, confirmed by bisecting against the raw API directly (bypassing
-# Terraform and the OCI CLI's SDK wrapper) after the generic
-# 400-InvalidParameter "Unable to process JSON input" error survived a
-# provider upgrade (9.1.0 -> 9.2.0) and a `timestamp()` removal: OCI
-# Certificates Management's timeOfValidityNotAfter requires MILLISECOND
-# precision. `2027-09-18T17:14:17Z` (bare seconds, otherwise fully valid
-# RFC3339) is silently rejected; `2027-09-18T17:14:17.000Z` (explicit
-# .000 milliseconds) is accepted. Omitting the validity block entirely also
-# works — the API defaults it to a ~10-year-out expiry — which is how this
-# was isolated: a minimal payload without `validity` succeeded, and adding
-# the exact same date string back in immediately reintroduced the failure,
-# regardless of Z vs +00:00 offset notation (both fail without milliseconds;
-# both succeed with them). Not documented as a hard requirement anywhere in
-# the provider docs or CLI's own generated example values used to build this
-# stack's original (also millisecond-less) date. Compute a real value with
-# explicit milliseconds (e.g. `date -u -v+1y +"%Y-%m-%dT%H:%M:%S.000Z"` on
-# macOS) and pass it as -var.
-variable "cert_valid_until" { type = string }

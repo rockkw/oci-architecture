@@ -1,0 +1,11 @@
+schema_version: 20180708
+name: capstone-enrich
+version: 0.0.1
+runtime: python
+# 3.11 rather than lab-document-understanding-stack's 3.9: 3.9 is past
+# end-of-life, and fnproject publishes 3.11 build/run images.
+build_image: fnproject/python:3.11-dev
+run_image: fnproject/python:3.11
+entrypoint: /python/bin/fdk /function/func.py handler
+memory: 256
+timeout: 120

@@ -1,0 +1,137 @@
+# Rendered by lab-capstone-vllm-stack (terraform output -raw vllm_manifest).
+# The API key Secret is NOT in this file; create it by hand first:
+#   kubectl -n ${namespace} create secret generic vllm-api-key --from-literal=api-key="$(openssl rand -hex 32)"
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ${namespace}
+---
+# Model weights cache. Keeps the ~15 GB download off the node's boot volume and
+# survives pod restarts. Block volumes are AD-bound; the GPU pool is in AD-1.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: vllm-model-cache
+  namespace: ${namespace}
+spec:
+  accessModes: ["ReadWriteOnce"]
+  storageClassName: oci-bv
+  resources:
+    requests:
+      storage: ${model_cache_size_gb}Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vllm
+  namespace: ${namespace}
+  labels: { app: vllm }
+spec:
+  replicas: 1
+  # One GPU, so the old pod has to release it before the new one can start.
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels: { app: vllm }
+  template:
+    metadata:
+      labels: { app: vllm }
+    spec:
+      # Same selector OKE's own nvidia-gpu-device-plugin DaemonSet uses.
+      nodeSelector:
+        beta.kubernetes.io/instance-type: ${gpu_shape}
+      # OKE doesn't taint GPU nodes by default. This is here so the pod still
+      # schedules if a nvidia.com/gpu taint is added to the pool later.
+      tolerations:
+        - key: nvidia.com/gpu
+          operator: Exists
+          effect: NoSchedule
+      containers:
+        - name: vllm
+          image: ${image}
+          command: ["vllm", "serve"]
+          args:
+            - "${model}"
+            - "--revision=${model_revision}"
+            - "--served-model-name=${served_model_name}"
+            - "--dtype=bfloat16"
+            - "--max-model-len=${max_model_len}"
+            - "--gpu-memory-utilization=${gpu_memory_utilization}"
+            - "--host=0.0.0.0"
+            - "--port=8000"
+            # Anything in 10.0.2.0/24 can reach the LB, so require a bearer token.
+            # /health stays unauthenticated, which the probes rely on.
+            - "--api-key=$(VLLM_API_KEY)"
+          env:
+            - name: VLLM_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: vllm-api-key
+                  key: api-key
+            - name: HF_HOME
+              value: /models/hf
+          ports:
+            - name: http
+              containerPort: 8000
+          resources:
+            requests:
+              cpu: "4"
+              memory: 32Gi
+              nvidia.com/gpu: 1
+            limits:
+              memory: 64Gi
+              nvidia.com/gpu: 1
+          # First start downloads the weights and compiles CUDA graphs, which can
+          # take several minutes. Allow up to 20 minutes before restarting.
+          startupProbe:
+            httpGet: { path: /health, port: http }
+            periodSeconds: 10
+            failureThreshold: 120
+          readinessProbe:
+            httpGet: { path: /health, port: http }
+            periodSeconds: 10
+            failureThreshold: 3
+          livenessProbe:
+            httpGet: { path: /health, port: http }
+            periodSeconds: 30
+            failureThreshold: 3
+          volumeMounts:
+            - name: model-cache
+              mountPath: /models
+            - name: dshm
+              mountPath: /dev/shm
+      volumes:
+        - name: model-cache
+          persistentVolumeClaim:
+            claimName: vllm-model-cache
+        - name: dshm
+          emptyDir:
+            medium: Memory
+            sizeLimit: 2Gi
+---
+# Internal OCI load balancer in the private subnet. Annotation names checked
+# against Oracle's "Configuring Load Balancers and Network Load Balancers" page
+# (docs.oracle.com/en-us/iaas/Content/ContEng/Tasks/contengconfiguringloadbalancersnetworkloadbalancers-subtopic.htm).
+apiVersion: v1
+kind: Service
+metadata:
+  name: vllm
+  namespace: ${namespace}
+  annotations:
+    oci.oraclecloud.com/load-balancer-type: "lb"
+    service.beta.kubernetes.io/oci-load-balancer-internal: "true"
+    service.beta.kubernetes.io/oci-load-balancer-subnet1: "${lb_subnet_id}"
+    service.beta.kubernetes.io/oci-load-balancer-shape: "flexible"
+    service.beta.kubernetes.io/oci-load-balancer-shape-flex-min: "10"
+    service.beta.kubernetes.io/oci-load-balancer-shape-flex-max: "10"
+    # Terraform owns every security rule (lab-capstone-vllm-stack/main.tf).
+    oci.oraclecloud.com/security-rule-management-mode: "None"
+    oci.oraclecloud.com/oci-network-security-groups: "${lb_nsg_id}"
+spec:
+  type: LoadBalancer
+  selector: { app: vllm }
+  ports:
+    - name: http
+      port: ${listener_port}
+      targetPort: http
+      protocol: TCP

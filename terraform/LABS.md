@@ -17,11 +17,13 @@ lab-network-stack
     ├── lab-basedb-stack (needs lab-network-stack's vcn_id + lab-private-network-stack's private_subnet_id)
     └── lab-oke-stack (needs lab-network-stack's public subnet too)
         ├── lab-oke-app-stack (needs lab-oke-stack's cluster_id, dependency-only)
-        └── lab-oke-gpu-stack (needs lab-oke-stack's cluster_id)
+        ├── lab-oke-gpu-stack (needs lab-oke-stack's cluster_id, workers_nsg_id)
+        └── lab-capstone-vllm-stack (needs lab-oke-stack's workers_nsg_id; runs on lab-oke-gpu-stack)
 
 lab-func-stack       (standalone — only depends on lab-network-stack's subnet)
 lab-zpr-stack        (standalone — own VCN/subnet, no dependency on any other stack)
 lab-firewall-stack   (standalone — own VCN/subnet, no dependency on any other stack)
+lab-capstone-enrich-stack (needs lab-network-stack's vcn_id + lab-private-network-stack's private_subnet_id)
 ```
 
 Apply order: `lab-network-stack` → `lab-nsg-stack` → everything else, in any order.
@@ -33,6 +35,7 @@ stack it depends on, since Terraform/OCI will block deleting a subnet, VCN, or
 cluster that a dependent stack's resources still live in:
 
 ```
+lab-capstone-vllm-stack     (delete the vllm Service first so the LB releases its NSG)
 lab-oke-gpu-stack
 lab-oke-app-stack           (no dependents — can go anytime, before or after lab-oke-stack)
 lab-oke-stack
@@ -213,6 +216,10 @@ bucket. Only `oci_core_vtap`-style CA/cert/HTTPS-listener chain failed; see
 below.
 
 ### Real apply results and two unresolved blockers
+
+> **Update 2026-09-24:** likely root cause found (the CA needs its own dynamic
+> group, not a `service certificates` grant). Fix is written but not yet applied;
+> see [CAPSTONE.md](CAPSTONE.md), Phase 1.
 
 **Blocker 1 — OCI Certificates CA creation, root cause still unresolved.**
 `oci_certificates_management_certificate_authority.mymagnet` never
@@ -1022,7 +1029,7 @@ node pool to the same cluster rather than standing up a second cluster. Kept as 
 separate stack (instead of a second pool resource inside `lab-oke-stack`) so the
 expensive GPU nodes can be applied/destroyed independently of the base cluster.
 
-Depends on: `lab-oke-stack` (`cluster_id`, `kubernetes_version`), `lab-private-network-stack` (`private_subnet_id`)
+Depends on: `lab-oke-stack` (`cluster_id`, `kubernetes_version`, `workers_nsg_id`), `lab-private-network-stack` (`private_subnet_id`)
 Outputs: `gpu_node_pool_id`, `node_shape`
 
 **Before applying:** GPU shapes need a GPU service limit increase in your tenancy
@@ -1201,6 +1208,236 @@ state) — `oci network-firewall network-firewall get` returns
    `ACTIVE` — by far the slowest single resource in any lab stack here)
    applied cleanly on the first pass.
 
+### lab-capstone-vllm-stack
+Phase 4 of the [MyMagnet capstone](CAPSTONE.md): serves `Qwen/Qwen2.5-7B-Instruct`
+with vLLM on `lab-oke-gpu-stack`'s A10 node, behind an **internal** OCI load
+balancer in the private subnet `10.0.2.0/24`. vLLM exposes an OpenAI-compatible API
+(`/v1/chat/completions`, `/v1/models`), so the Phase 3 Function and, possibly, Phase 2
+Select AI can call it like any OpenAI endpoint.
+
+Split the same way as `lab-oke-app-stack`: Terraform owns only OCI resources, and
+the Kubernetes objects are plain YAML applied with `kubectl`. The YAML lives in
+[`vllm.yaml.tftpl`](lab-capstone-vllm-stack/vllm.yaml.tftpl) and Terraform renders it
+into the `vllm_manifest` output, so the NSG and subnet OCIDs don't have to be pasted in
+by hand.
+
+**Builds on:** `lab-oke-stack` (cluster, `lab-oke-workers-nsg`), `lab-oke-gpu-stack`
+(the A10 pool), `lab-private-network-stack` (the LB's subnet).
+
+Depends on: `lab-oke-stack` (`workers_nsg_id`), `lab-network-stack` (`vcn_id`), `lab-private-network-stack` (`private_subnet_id`)
+Outputs: `lb_nsg_id`, `vllm_manifest`
+
+**Region and VCN (checked against state and the live API, 2026-09-24).**
+`lab-oke-cluster` is in **us-phoenix-1**, in `lab-vcn`
+(`ocid1.vcn.oc1.phx.amaaaaaafr5ivrya…hpbea`). That's the **same VCN** as
+`lab-mymagnet-stack`, and the CPU workers (`10.0.2.12`, `10.0.2.205`) are in the
+**same subnet** as the MyMagnet instances (`lab-private-subnet`, `10.0.2.0/24`). So
+none of the cross-VCN options are needed:
+
+| Option | When it would apply | Verdict |
+|---|---|---|
+| Build the LB in the MyMagnet VCN | Cluster in another VCN, same region | Already the case: nothing to do |
+| Peer with a Local Peering Gateway, or a DRG | Cluster in another VCN (LPG same region, DRG + RPC cross-region) | Not needed |
+| Move/rebuild the cluster | Cluster in another region | Not needed |
+
+`oci ce cluster list` shows the cluster `ACTIVE` and `lab-node-pool` (2 × A1.Flex)
+`ACTIVE`; `kubectl get nodes` shows both nodes `Ready`. No GPU pool exists yet
+(`lab-oke-gpu-stack` has no state).
+
+**GPU quota (Phoenix, 2026-09-24):** `gpu-a10-count` is 32 per AD, and
+`oci limits resource-availability get … --limit-name gpu-a10-count --availability-domain bXWp:PHX-AD-1`
+returns 32 available, 0 used. The pool goes in AD-1, so no limit increase is needed.
+
+**What the stack creates** (plan: 6 to add, 0 to change, 0 to destroy):
+- `lab-capstone-vllm-lb-nsg`, attached to the LB through the
+  `oci.oraclecloud.com/oci-network-security-groups` annotation.
+  - Ingress TCP 80 from `client_cidr` (`10.0.2.0/24`).
+  - Egress to the workers NSG on the NodePort range (30000–32767) and kube-proxy's
+    health-check port 10256.
+- Two ingress rules added to `lab-oke-workers-nsg` (from the LB NSG, same ports).
+  The stack references that NSG by OCID and doesn't own it, so `destroy` only removes
+  these two rules.
+
+The Service sets `oci.oraclecloud.com/security-rule-management-mode: "None"`, so the
+cloud controller manager doesn't edit security lists or create its own NSG; every rule
+is in Terraform. The private subnet's security list only opens 22/443/ICMP, so these
+NSG rules are what let the traffic through (NSG and security-list rules are combined).
+
+**Changes to the upstream stacks, needed for Phase 4:**
+- `lab-oke-stack` gets a `workers_nsg_id` output (output only; no resource change).
+- `lab-oke-gpu-stack` now puts the GPU nodes in the workers NSG (`nsg_ids` and
+  `pod_nsg_ids`, new required variable `workers_nsg_id`). Without it, GPU nodes
+  would hit the same "register timeout" the CPU pool did before the NSG fix.
+- `lab-oke-gpu-stack` also raises the boot volume to 150 GB and adds Oracle's
+  documented cloud-init (fetch `oke_init_script`, run `oci-growfs -y`, run the init
+  script). The vLLM image is about 20 GB unpacked, which is tight on the default 50 GB
+  boot volume. Plan: 1 to add, with the image resolved to
+  `Oracle-Linux-9.8-Gen2-GPU-2026.08.14-0-OKE-1.36.1-1699`.
+
+**Model: `Qwen/Qwen2.5-7B-Instruct`, pinned to revision `a09a3545…8bc28`.**
+- Apache-2.0 and not gated (checked with the Hugging Face API), so no HF token or
+  Secret is needed.
+- 7.6B parameters is about 15.2 GB in bf16. The A10 supports bf16.
+- With `--gpu-memory-utilization=0.90`, vLLM gets about 21.6 GB of the A10's 24 GB.
+  That leaves roughly 4–5 GB for KV cache after weights and CUDA graphs.
+- Qwen2.5-7B uses GQA (28 layers, 4 KV heads × 128), about 56 KB of KV per token, so
+  that's room for tens of thousands of cached tokens.
+- `--max-model-len=8192` (the model's native context is 32K) keeps one long request
+  from claiming the whole cache. It's plenty for enrichment prompts.
+- Fallback if it runs out of memory: `Qwen/Qwen2.5-1.5B-Instruct` (also Apache-2.0,
+  about 3 GB). Avoid `Qwen2.5-3B-Instruct`, which uses the Qwen Research license
+  rather than Apache-2.0.
+- Llama 3.x and Gemma are gated behind a license click-through, so they'd need an HF
+  token.
+
+**Deployment details** (`vllm.yaml.tftpl`):
+
+| Setting | Value | Why |
+|---|---|---|
+| Image | `vllm/vllm-openai:v0.30.0-x86_64-cu129` | Pinned release (2026-09-22). The cu129 build runs on older drivers than the default CUDA 13 build; check `nvidia-smi` on the node before moving to CUDA 13 |
+| GPU | `nvidia.com/gpu: 1` (request and limit) | OKE's `nvidia-gpu-device-plugin` DaemonSet is already in `kube-system` and schedules onto A10 shapes |
+| Node selector | `beta.kubernetes.io/instance-type: VM.GPU.A10.1` | The same label OKE's device plugin uses for node affinity |
+| Toleration | `nvidia.com/gpu` Exists / NoSchedule | OKE doesn't taint GPU nodes by default (Oracle's GPU page shows no toleration). This only matters if a taint is added later |
+| Probes | `startupProbe` (up to 20 min), `readinessProbe` and `livenessProbe` on `/health` | The first start downloads 15 GB of weights. `/health` isn't behind the API key |
+| Model cache | 50 Gi `oci-bv` PVC at `/models` (`HF_HOME=/models/hf`) | Keeps weights off the boot volume and across pod restarts. 50 GB is the `oci-bv` minimum |
+| `/dev/shm` | 2 Gi memory `emptyDir` | vLLM uses shared memory; the container runtime's default is small |
+| Strategy | `Recreate` | There's only one GPU, so the old pod must release it before the new one starts |
+| Auth | `--api-key=$(VLLM_API_KEY)` from Secret `vllm-api-key` | Anything in `10.0.2.0/24` can reach the LB, including every OKE pod (VCN-native pod IPs come from the same subnet). The key is the only thing separating MyMagnet from any other workload in the subnet |
+
+**Service annotations**, checked against Oracle's
+[Configuring Load Balancers and Network Load Balancers](https://docs.oracle.com/en-us/iaas/Content/ContEng/Tasks/contengconfiguringloadbalancersnetworkloadbalancers-subtopic.htm)
+page rather than written from memory:
+
+| Annotation | Value |
+|---|---|
+| `oci.oraclecloud.com/load-balancer-type` | `"lb"` (a Layer 7 LB rather than an NLB) |
+| `service.beta.kubernetes.io/oci-load-balancer-internal` | `"true"` |
+| `service.beta.kubernetes.io/oci-load-balancer-subnet1` | `lab-private-subnet` OCID. Without this, the LB would go in the cluster's `service_lb_subnet_ids` (the **public** subnet) |
+| `service.beta.kubernetes.io/oci-load-balancer-shape` | `"flexible"`, with `-shape-flex-min`/`-shape-flex-max` = `"10"` |
+| `oci.oraclecloud.com/security-rule-management-mode` | `"None"`. Other values are `NSG` (the CCM creates its own NSG), `SL-All` (the default for LBs) and `SL-Frontend` |
+| `oci.oraclecloud.com/oci-network-security-groups` | The stack's `lb_nsg_id` |
+
+Optional, not used: `oci.oraclecloud.com/reserved-private-ips` would pin the LB to a
+fixed IP in `10.0.2.0/24`. It's supported on Kubernetes 1.32+ (the cluster runs
+1.36.1) and would save updating the Function config after every rebuild.
+
+**Validation (2026-09-24):**
+- `terraform fmt -check` and `terraform validate`: pass, for this stack and for
+  `lab-oke-gpu-stack`.
+- `terraform plan` against the live tenant: 6 to add here, 1 to add for
+  `lab-oke-gpu-stack`.
+- The manifest was rendered with a placeholder NSG OCID, and
+  `kubectl apply --dry-run=client` created all four objects in dry-run mode:
+  Namespace, PVC, Deployment and Service.
+- Nothing has been applied.
+
+**Cost.** `VM.GPU.A10.1` is roughly $2/hour at list price (confirm on Oracle's price
+list) and bills whenever the instance runs, even with no traffic. The 150 GB boot
+volume, the 10 Mbps flexible LB and the 50 GB PVC are small next to that. Only keep
+the GPU pool while testing; a 2-hour session is about $4–5.
+
+#### Runbook: bring up
+
+```bash
+cd terraform
+export SUPPRESS_LABEL_WARNING=True
+
+# 0. Confirm A10 capacity in PHX-AD-1 (read-only)
+oci limits resource-availability get --compartment-id <compartment_ocid> \
+  --service-name compute --limit-name gpu-a10-count \
+  --availability-domain bXWp:PHX-AD-1 --region us-phoenix-1
+
+# 1. Publish the workers NSG output (no resource changes)
+(cd lab-oke-stack && terraform apply)          # same -var flags as before
+(cd lab-oke-stack && terraform output workers_nsg_id)
+
+# 2. GPU pool: about 10-20 min. Billing starts here.
+(cd lab-oke-gpu-stack && terraform plan && terraform apply)
+kubectl get nodes -l beta.kubernetes.io/instance-type=VM.GPU.A10.1
+kubectl describe node <gpu-node-ip> | grep nvidia.com/gpu   # expect Capacity 1
+
+# 3. LB NSG and rules, then render the manifest
+(cd lab-capstone-vllm-stack && terraform plan && terraform apply)
+(cd lab-capstone-vllm-stack && terraform output -raw vllm_manifest > /tmp/vllm.yaml)
+
+# 4. API key Secret first, then everything else
+kubectl create namespace vllm
+kubectl -n vllm create secret generic vllm-api-key \
+  --from-literal=api-key="$(openssl rand -hex 32)"
+kubectl apply -f /tmp/vllm.yaml
+kubectl -n vllm rollout status deploy/vllm --timeout=30m
+kubectl -n vllm logs deploy/vllm | tail          # model loaded, "Application startup complete"
+kubectl -n vllm get svc vllm                     # EXTERNAL-IP should be a 10.0.2.x address
+```
+
+#### Runbook: smoke test
+
+Clients must be in `10.0.2.0/24`. A throwaway pod on the CPU nodes counts, because
+VCN-native pod IPs come from that subnet. Otherwise run the same `curl` from a
+MyMagnet instance.
+
+```bash
+LB_IP=$(kubectl -n vllm get svc vllm -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+KEY=$(kubectl -n vllm get secret vllm-api-key -o jsonpath='{.data.api-key}' | base64 -d)
+
+kubectl run curl --rm -it --restart=Never --image=curlimages/curl -- \
+  curl -s http://$LB_IP/v1/chat/completions \
+    -H "Authorization: Bearer $KEY" \
+    -H "Content-Type: application/json" \
+    -d '{"model":"qwen2.5-7b-instruct","messages":[{"role":"user","content":"Reply with exactly five words."}],"max_tokens":32}'
+
+# Negative checks
+kubectl run curl --rm -it --restart=Never --image=curlimages/curl -- \
+  curl -s -o /dev/null -w '%{http_code}\n' http://$LB_IP/v1/models   # expect 401 (no key)
+curl -m 5 http://$LB_IP/health    # from the laptop: should time out (internal LB, private IP)
+```
+
+#### Runbook: tear down (the same day)
+
+Order matters. The LB's VNIC holds the LB NSG, so the Service has to go before
+`terraform destroy` can delete the NSG.
+
+```bash
+# 1. Delete the Service (the CCM deletes the LB) and the Deployment
+kubectl -n vllm delete svc vllm
+kubectl -n vllm delete deploy vllm
+oci lb load-balancer list --compartment-id <compartment_ocid> --region us-phoenix-1 \
+  --query 'data[]."display-name"'    # wait until the vLLM LB is gone
+
+# 2. Remove the GPU pool. This is the step that stops the ~$2/h.
+(cd lab-oke-gpu-stack && terraform destroy)
+oci ce node-pool list --compartment-id <compartment_ocid> --region us-phoenix-1 \
+  --query 'data[].{name:name,shape:"node-shape",state:"lifecycle-state"}' --output table
+# expect only lab-node-pool
+
+# 3. Optional: keep or drop the model cache and the NSG rules
+kubectl delete namespace vllm                       # also deletes the PVC and its block volume
+(cd lab-capstone-vllm-stack && terraform destroy)   # NSGs are free, so this can wait
+```
+
+Keeping the `vllm` namespace (and PVC) between sessions avoids re-downloading 15 GB.
+The PVC's block volume costs only a little per month and stays in PHX-AD-1, the same
+AD the GPU pool uses.
+
+**Select AI (Phase 2) as a client.** The ADB private endpoint will be in
+`10.0.2.0/24`, so `client_cidr` already covers it. Its NSG needs egress to the LB IP on
+port 80, and the database needs a network ACL for the host
+(`DBMS_NETWORK_ACL_ADMIN.APPEND_HOST_ACE`). **Unconfirmed: whether Select AI's
+`provider_endpoint` accepts plain `http://`.** It may require HTTPS. Test before
+relying on it.
+
+**HTTPS later (not built).** The listener is plain HTTP on purpose. The earlier
+attempt to issue a private CA certificate from OCI Certificates failed on IAM (see
+CAPSTONE.md, Phase 1). Two ways to add TLS once a certificate exists:
+1. Terminate TLS at the LB, using the CCM's SSL-port and TLS-secret annotations
+   (check the exact names on the same Oracle page first), with port 443 on the LB
+   NSG.
+2. Pass TCP through to vLLM, started with `--ssl-certfile`/`--ssl-keyfile` from a
+   mounted Secret.
+
+Option 1 keeps certificates out of the pod and matches how `lab-mymagnet-stack`'s
+public LB was set up.
+
 ---
 
 ## Notes
@@ -1233,3 +1470,315 @@ for not-yet-applied dependencies (real values once earlier stacks are applied).
 | `lab-oke-gpu-stack` | not fully verifiable yet | Its GPU image lookup queries `node_pool_option_id = var.cluster_id` directly (not `"all"`), so it needs a real cluster to return image sources — a placeholder `cluster_id` yields `sources = null`, which is expected, not a bug. Fully dry-runnable only after `lab-oke-stack` is applied.
 | `lab-zpr-stack` | 13 to add | Real values (`sandbox` compartment, real tenancy OCID) — standalone, no placeholders needed. First attempt used unnamespaced `security_attribute` strings guessed from MyLearn's UI-level tag syntax; `terraform validate` passed but the syntax didn't match the real API. Corrected after confirming the provider's actual `security_attributes` map format against its doc source, which also surfaced that the namespace/attribute are their own resources (`oci_security_attribute_security_attribute_namespace`/`oci_security_attribute_security_attribute`) not implicit strings. The ZPR Policy Language statement text itself is unverified beyond schema-level string validity — flagged as the most likely failure point if this is ever applied. |
 | `lab-firewall-stack` | **Applied**: 30 added, 0 errors (after one fix) | `terraform validate`/`plan` passed cleanly on the first attempt — config was schema-correct throughout. `terraform apply` itself hit one real API-level rejection `terraform plan` couldn't have caught: `oci_core_vtap` with `is_vtap_enabled = true` fails at creation (`400-InvalidParameter, VTap cannot be enabled at creation`), since the real API requires create-disabled-then-enable. Fixed with a two-phase apply (create `false`, flip to `true`, re-apply). Every other resource, including the Network Firewall itself (36m38s to `ACTIVE`), applied on the first pass. Independently verified against the live API post-apply via `oci network-firewall network-firewall get` and `oci network vtap get`, not just Terraform's own state. |
+
+---
+
+### lab-capstone-observability-stack
+
+Capstone Phase 5 (see [CAPSTONE.md](CAPSTONE.md)): logs, alarms and log
+archiving for the running `lab-mymagnet-stack` deployment in us-phoenix-1.
+IAM resources use a `home` provider alias (us-ashburn-1). **Not applied.**
+
+**Depends on `lab-mymagnet-stack`**: pass `instance_1_id`, `instance_2_id` and
+`load_balancer_id` from its `terraform output`. `alarm_email` has no default.
+
+- **Logging**: one log group, three custom logs (`app` =
+  `/opt/magnetlookup/data/logs/*`, `nginx-access` with the `APACHE2` parser,
+  since nginx's default `combined` format matches it, and `nginx-error`), and
+  one `oci_logging_unified_agent_configuration` per log (a config has one
+  destination log). The host group is a new dynamic group
+  `mymagnet-uma-dyn-grp` matching both instance OCIDs, with
+  `use log-content` on the compartment. That verb is from Oracle's Logging docs:
+  it covers downloading the agent config, sending logs and searching them.
+- **Ampere caveat, verified**: Oracle's Oracle Cloud Agent plugin docs state
+  that the **Custom Logs Monitoring plugin is not supported on Ampere A1
+  shapes**, and both instances are `VM.Standard.A1.Flex`. The agent
+  configuration alone collects nothing. Workaround: install the standalone
+  Unified Monitoring Agent by hand. Oracle ships an aarch64 `.deb` for
+  Ubuntu 24.04 (`unified-monitoring-agent-ub-24-<ver>.aarch64.deb`) from the
+  public `unified-monitoring-agent-ub-bucket` in namespace `axmjwnk4dzjv`
+  ([Installing the Agent](https://docs.oracle.com/en-us/iaas/Content/Logging/Task/installing_the_agent.htm)),
+  then `dpkg -i` it on each instance. **Unverified:** the install page lists
+  "Custom Logs Monitoring plugin enabled" as a prerequisite, which contradicts
+  the A1 restriction. Test on one instance before relying on it. Fallbacks:
+  move to `VM.Standard.E5.Flex` (x86, plugin supported), or have the app call
+  the Logging `PutLogs` API with its instance principal.
+- **Alarms → Notifications topic `mymagnet-alarms`** (email subscription;
+  OCI sends a confirmation link first):
+  `unhealthyBackendServers[1m]{…backendSetName}.max() > 0` (CRITICAL, 5 min
+  pending); `httpResponses5xx[5m]{…backendSetName}.sum() > 5` (backend-generated
+  5xx); `CpuUtilization[5m]{resourceId =~ "id1|id2"}.mean() > 80` with
+  per-dimension notifications. `oci_lbaas` metric names and the `=~` `|` OR
+  syntax were checked against Oracle's LB metrics and MQL references.
+  `CpuUtilization` needs the Compute Instance Monitoring plugin. That plugin
+  *is* supported on A1 and is enabled in state (`is_monitoring_disabled = false`).
+- **Optional Connector Hub archive** (`enable_log_archive`, default `true`):
+  `oci_sch_service_connector` from the whole log group to the
+  `mymagnet-log-archive` bucket, rolling files every 7 min (the documented
+  limit). A lifecycle policy moves objects to ARCHIVE at 30 days and deletes them
+  at 365 days. Archive tier has a 90-day minimum charge, so keep
+  delete ≥ archive + 90. It needs two policies: Oracle's `any-user … where
+  request.principal.type='serviceconnector'` bucket template, and the
+  `Allow service objectstorage-us-phoenix-1 to manage object-family`
+  service permission that lifecycle rules need. The Oracle docs say to put the
+  second one in the tenancy root. No such policy existed for Phoenix; checked
+  with `oci iam policy list`.
+
+`terraform validate` passes (provider 9.3.0). `terraform plan`: **19 to add**
+(14 with `-var enable_log_archive=false`). 4 of those are IAM resources (1 dynamic
+group, 3 policies; 2 without the archive), so a person has to run the apply.
+
+---
+
+## Capstone labs
+
+See [CAPSTONE.md](CAPSTONE.md) for how these fit together.
+
+### lab-capstone-enrich-stack
+
+Capstone Phase 3: event-driven enrichment of MyMagnet results. A results bucket
+(`mymagnet-results`, with `object_events_enabled = true`), an Events rule on
+`com.oraclecloud.objectstorage.createobject` filtered to that bucket, a Python
+(fdk) Function that reads the new object, asks an LLM for tags and a summary, and
+writes `enriched/<object>.enrichment.json` to a second bucket
+(`mymagnet-enrichment`). A dynamic group + policy give the function resource-principal
+access scoped to the two buckets.
+
+**Builds on:** `lab-document-understanding-stack` (same Events → Function shape,
+same resource-principal dynamic group) and `lab-func-stack` (Functions application).
+Differences, and why:
+
+- **Private subnet.** The function runs in MyMagnet's NAT-routed `10.0.2.0/24`
+  subnet, not a public one, because Phase 4's vLLM sits behind an *internal* LB.
+  That subnet also routes Oracle services through a service gateway, so Object
+  Storage and OCIR traffic stays off the internet (checked read-only 2026-09-24).
+  The function gets its own NSG (`function_nsg_id` output). Phase 4's LB NSG
+  can later allow ingress from that NSG instead of the whole subnet.
+- **The model is a config value, not code.** `LLM_ENDPOINT` / `LLM_MODEL` come from
+  the function's config map (`llm_endpoint` / `llm_model` variables). While
+  `llm_endpoint` is empty, the function writes a deterministic placeholder
+  (`tags = ["placeholder", "ext:<extension>"]`, summary = first line), so the whole
+  pipeline can be tested before any GPU exists. The model call uses stdlib
+  `urllib` against the OpenAI-compatible `/v1/chat/completions`. A timeout or bad
+  reply still writes a record with `status = "llm_error"`, so a failure leaves
+  something visible in the bucket.
+- **API key from Vault.** `lab-capstone-vllm-stack` starts vLLM with `--api-key`.
+  Set `llm_api_key_secret_ocid` to a Vault secret holding the same value. The
+  function reads it via resource principal and sends it as `Authorization:
+  Bearer`, and the policy gains `read secret-bundles` on that one secret only.
+  This keeps the key out of the function's config map and out of plan output.
+- **Events actually fire.** Object Storage emits object events only when the bucket
+  has `object_events_enabled = true` (default false).
+  `lab-document-understanding-stack` doesn't set it, so its rule would never fire.
+- **Events needs its own grant.** `Allow service cloudEvents to use functions-family
+  in compartment ...`. Without it, the rule matches but the invocation is denied.
+  No such statement existed in the tenancy yet.
+- **Rule filters on the bucket.** `condition_details.data` matches
+  `additionalDetails.bucketName`. func.py checks the bucket again, and output
+  goes to a separate bucket, so the function's writes can't re-trigger it.
+- **ADB hook.** `write_to_adb()` in func.py is a marked no-op (`ADB_ENABLED=false`)
+  until Phase 2's Autonomous DB exists. For now the output bucket holds the results.
+- **`source_details { source_type = "CONTAINER_IMAGE" }`** replaces the top-level
+  `image` argument the older labs use. Provider 9.x deprecates `image`.
+
+Depends on: `lab-network-stack` (`vcn_id`), `lab-private-network-stack`
+(`private_subnet_id` → `subnet_ocid`), `lab-mymagnet-stack` (its instance dynamic
+group is granted write on the results bucket via `writer_dynamic_group_name`)
+Outputs: `input_bucket_name`, `output_bucket_name`, `function_id`, `function_nsg_id`,
+`events_rule_id`, `dynamic_group_id`
+
+**Status (2026-09-24): not applied.** `terraform validate` is clean. `terraform plan`
+against the live tenant shows 9 to add, 0 to change, 0 to destroy (with a placeholder
+image path). 9 unit tests pass (`python3 -m unittest discover -s tests -v`): the
+placeholder path, bucket and event skips, a mocked LLM reply (including a
+Markdown code-fenced JSON reply), the Bearer token from a mocked secret, a mocked
+timeout, and the ADB hook.
+
+**Build and push the image first.** `oci_functions_function` needs the image to
+exist in OCIR in the function's region (Phoenix):
+
+```bash
+cd terraform/lab-capstone-enrich-stack
+python3 -m unittest discover -s tests -v
+
+# Auth token: Console → Profile → Auth tokens. Username is
+# <namespace>/<username>, or <namespace>/<identity-domain>/<username>
+# for a non-Default identity domain.
+docker login phx.ocir.io -u 'idtlmgo3jgde/<username>'
+
+# Functions shape is GENERIC_X86, so build amd64 even on Apple Silicon.
+docker build --platform linux/amd64 -t phx.ocir.io/idtlmgo3jgde/capstone/enrich:0.0.1 .
+docker push phx.ocir.io/idtlmgo3jgde/capstone/enrich:0.0.1
+# (The push auto-creates a private repo in the root compartment. To put it
+# in the lab compartment, create it first:
+#  oci artifacts container repository create --compartment-id <compartment> \
+#    --display-name capstone/enrich --region us-phoenix-1)
+
+# Or with the fn CLI (it generates its own Dockerfile from func.yaml):
+#   fn create context phx --provider oracle
+#   fn use context phx
+#   fn update context registry phx.ocir.io/idtlmgo3jgde/capstone
+#   fn build && fn push     # then set function_image to the pushed tag
+```
+
+**Apply and test (placeholder mode):** `terraform.tfvars` (gitignored) holds the
+OCIDs, copied from `lab-mymagnet-stack/terraform.tfvars`. Apply creates IAM in the
+home region, and IAM changes can take a minute or two to propagate. If the first
+upload fails, wait and retry.
+
+```bash
+terraform plan && terraform apply
+echo "Ubuntu 24.04 LTS desktop ISO" > r.txt
+oci os object put -bn mymagnet-results --file r.txt --region us-phoenix-1
+oci os object get -bn mymagnet-enrichment --name enriched/r.txt.enrichment.json \
+  --file - --region us-phoenix-1
+```
+
+**Phase 4 hookup:** `lab-capstone-vllm-stack`'s LB NSG already admits
+`10.0.2.0/24` on port 80, which covers this function. Put the `vllm-api-key` value
+in a Vault secret, then:
+
+```bash
+terraform apply -var llm_endpoint=http://<internal-lb-ip> \
+  -var llm_model=qwen2.5-7b-instruct \
+  -var llm_api_key_secret_ocid=<vault-secret-ocid>
+```
+
+This changes config and IAM only, so no image rebuild is needed. The LLM timeout
+defaults to 60s. The function timeout is that plus 60s, and OCI caps it at 300s.
+
+### lab-capstone-adb-stack
+
+Capstone Phase 2: MyMagnet's library moves from a separate SQLite file on each
+node to one **Autonomous AI Database** (Serverless, Transaction Processing,
+`db_version = "26ai"`). **AI Vector Search** runs on embeddings computed inside
+the database by Oracle's prebuilt ONNX `all-MiniLM-L12-v2` model. The stack
+creates a private endpoint in the instance subnet, an NSG that opens 1522 to
+`10.0.2.0/24` only, generated passwords stored as Vault secrets, a bucket for
+the ONNX file, and one IAM policy. It also contains `sql/` scripts and a drafted
+app patch (`app-patch/`).
+
+**Builds on:** `lab-basedb-stack`'s pattern (private subnet, an NSG on the
+listener port only, no public IP) and `lab-mymagnet-stack` (its Vault, and its
+instance dynamic group for the secret-read policy). Differences, and why:
+
+- **26ai, not 23ai.** A read-only `oci db autonomous-db-version list
+  --db-workload OLTP` in us-phoenix-1 (2026-09-24) returned 19c, 23ai and 26ai,
+  with **26ai as `is-default-for-paid`**. Oracle now calls the service
+  "Autonomous AI Database". The vector features (the `VECTOR` type,
+  `VECTOR_EMBEDDING`, vector indexes) are the same from 23ai onwards. 23ai
+  still works via `-var db_version=23ai`.
+- **Why not Always Free.** Oracle's Always Free docs rule it out for this
+  design. Always Free ADB is **home-region only** (Ashburn, while MyMagnet runs
+  in Phoenix). It "cannot be provisioned as a private endpoint and cannot
+  reside within a VCN". It stops after 7 idle days and may be reclaimed after
+  90. Using it would mean public, cross-region traffic from the NAT gateway,
+  allowed by an ACL. The private endpoint + NSG pattern is the part worth
+  studying, so this stack uses the smallest paid database instead: **2 ECPUs
+  (the minimum), 20 GB, auto-scaling off for both CPU and storage.** Stop it
+  between study sessions; a stopped ADB bills storage only.
+- **Port 1522 only.** Oracle's private-endpoint docs say mTLS uses 1522 and TLS
+  uses 1521 **or** 1522. `is_mtls_connection_required = false` (TLS without a
+  wallet is allowed once the database has a private endpoint) lets
+  python-oracledb Thin mode connect with just user, password and DSN, and 1521
+  stays closed. The NSG has no egress rule: the rules are stateful, so replies
+  are allowed. Phase 4's Select AI will need an egress rule to the vLLM LB.
+- **The ADMIN password comes from a Vault secret, not a plain argument.**
+  `random_password` produces the value, `oci_vault_secret` stores it, and the ADB
+  uses `secret_id`. The person running the apply needs `read secret-bundles` on
+  that secret; the Administrators group already has it. The password is still in
+  this stack's local, gitignored state, because `random_password` puts it there.
+  The special characters are limited to `- _ #`. ADB's documented rule is
+  looser (12–30 chars, upper/lower/digit, no `"`, doesn't contain "admin"), but
+  `lab-basedb-stack` hit a 400 with other special characters on Base DB, and
+  these three are also safe in shells and DSNs.
+- **A new AES key.** Vault secrets must be encrypted with an AES key. The
+  existing `mymagnet-cert-key` is RSA (it was made for the Phase 1 CA), so this
+  stack adds `mymagnet-secrets-key` (AES-256, `length = 32` bytes) to the same
+  Vault. The Vault OCID and management endpoint come in as variables.
+- **The model is loaded from a PAR, with no credential.**
+  `DBMS_VECTOR.LOAD_ONNX_MODEL_CLOUD` reads one `.onnx` object, but Oracle ships
+  the model as a zip. So the file is unzipped, uploaded to `mymagnet-onnx-models`,
+  and read through a read-only PAR with `credential => NULL`, which Oracle's docs
+  show for PAR URIs. Without `ROUTE_OUTBOUND_CONNECTIONS = ENFORCE_PRIVATE_ENDPOINT`,
+  `DBMS_CLOUD`-family traffic uses Oracle's service network, so the load needs no
+  VCN route.
+- **The instances can read the app password.** The policy
+  `mymagnet-adb-secret-read` (home region) lets `mymagnet-instance-dyn-grp` read
+  `mymagnet-adb-app-password`, and only that secret. The app connects as
+  `MAGNET`, not ADMIN.
+
+**SQL (`sql/`):** `01` creates the app user; `02` loads the ONNX model;
+`03` is the SQLite schema translated to Oracle; `04` backfills embeddings and
+creates the HNSW index; `05` is an example similarity query;
+`select_ai_profile.sql` is optional (Phase 4). Translation notes:
+
+- `SIZE` is an Oracle reserved word, so `torrents.size` becomes `torrent_size`.
+- Timestamps stay as ISO strings, as in SQLite.
+- `AUTOINCREMENT` becomes `GENERATED BY DEFAULT ON NULL AS IDENTITY`, so the
+  migration can keep the existing ids.
+- `magnet` is `VARCHAR2(32767)`. ADB defaults to `MAX_STRING_SIZE = EXTENDED`.
+- `title_vec` is `VECTOR(384, FLOAT32)`.
+
+The index is HNSW with `DISTANCE COSINE`. On ADB-S the vector pool is sized
+automatically. An IVF alternative is commented out in `04`.
+
+**App patch (`app-patch/mymagnet-adb.patch`, against MyMagnet `e2641e0`,
+not pushed):** a new `magnet_db.py` provides a python-oracledb Thin-mode pool
+behind a sqlite3-shaped wrapper. The SQL moves to Oracle syntax: `MERGE`,
+`RETURNING`, `FETCH FIRST`, `LISTAGG`, and `UPPER()` for case-insensitive
+`LIKE`. There's a new `/api/similar?q=` endpoint, and
+`migrate_sqlite_to_adb.py` does the one-time copy: instance 1 as-is, then
+instance 2 with `--merge`. The patch applies cleanly and compiles. Both scripts
+passed an offline smoke test with a stubbed database; none of it has run
+against a real database. Once both nodes share one database: run the scraper
+timer on **one** node only, and LB sticky sessions are no longer needed.
+
+Depends on: `lab-network-stack` (`vcn_id`), `lab-private-network-stack`
+(`private_subnet_id` → `instance_subnet_id`), and `lab-mymagnet-stack`
+(`vault_id` and `vault_management_endpoint` from `oci_kms_vault.mymagnet`,
+plus the `mymagnet-instance-dyn-grp` name).
+Outputs: `autonomous_database_id`, `private_endpoint_ip`, `private_endpoint_host`,
+`connection_profiles`, `admin_secret_id`, `app_secret_id`, `models_bucket`
+
+**Status (2026-09-24): not applied.** `terraform validate` is clean
+(oracle/oci 9.3.0, hashicorp/random). `terraform plan` against the live tenant
+shows **10 to add**, 0 to change, 0 to destroy: NSG + rule, AES key, 2 secrets,
+ADB, bucket, 1 IAM policy, and 2 `random_password`. `terraform.tfvars`
+(gitignored) holds real OCIDs from `lab-mymagnet-stack` and a read-only vault list.
+
+**Verified against Oracle docs:**
+
+- Always Free limits.
+- The TLS/mTLS ports on private endpoints.
+- ADB password rules.
+- The `LOAD_ONNX_MODEL_CLOUD` signature, and `credential => NULL` for PARs.
+- `CREATE VECTOR INDEX` syntax for HNSW and IVF.
+- `FETCH APPROX` behaviour on ADB-S.
+- ADB's automatic vector pool.
+- `SIZE` being reserved.
+- `MAX_STRING_SIZE = EXTENDED`.
+- `ROUTE_OUTBOUND_CONNECTIONS` behaviour.
+- `APPEND_HOST_ACE(private_target => TRUE)`.
+
+**Unverified:**
+
+- The `.onnx` file name inside Oracle's zip.
+- Whether `DB_DEVELOPER_ROLE` includes `CREATE MINING MODEL`.
+- DML behaviour on HNSW-indexed tables in 26ai.
+- `VECTOR_EMBEDDING` inside a `MERGE ... INSERT`.
+- A bind variable in `FETCH APPROX FIRST ? ROWS`.
+- `START WITH LIMIT VALUE` on 26ai.
+- Whether Select AI requires HTTPS for `provider_endpoint`.
+- The 20 GB minimum storage for ECPU. If the API rejects it, the error will
+  name the real minimum.
+
+**Apply and use:** see `sql/README.md`, then `app-patch/README.md`.
+
+```bash
+cd terraform/lab-capstone-adb-stack
+terraform plan && terraform apply        # ADB provisioning takes a few minutes
+terraform output connection_profiles     # use the _tp TLS string; check it says port 1522
+# ...sql/01-03, migrate, sql/04, per the READMEs
+oci db autonomous-database stop --autonomous-database-id "$(terraform output -raw autonomous_database_id)"
+```

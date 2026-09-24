@@ -20,13 +20,3 @@ output "load_balancer_id" {
 output "backup_bucket_name" {
   value = oci_objectstorage_bucket.backups.name
 }
-
-# Useful for chaining into another stack, or for `oci certs-mgmt` CLI
-# lookups against the same CA/cert without re-reading this stack's state.
-output "certificate_authority_id" {
-  value = oci_certificates_management_certificate_authority.mymagnet.id
-}
-
-output "certificate_id" {
-  value = oci_certificates_management_certificate.mymagnet.id
-}
