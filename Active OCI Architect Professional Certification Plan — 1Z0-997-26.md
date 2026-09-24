@@ -157,28 +157,37 @@ since they were never actually attempted and self-graded.
    more intuitive general "scalability + resilience" instinct. The one
    skill-check miss across all four that was never caught before
    submitting — worth extra attention for that reason alone.
-8. **Autonomous Database provisioning inputs: deployment type, network
-   access type, workload type — NOT compute model/shape.** Missed,
-   uncorrected even after a retry, on Skill Check: Autonomous Database Q1
-   — selected "compute model and shape" over "network access type" as one
-   of the three core provisioning inputs. Compute model IS a real
-   provisioning-time choice (locked afterward, confirmed elsewhere in
-   Note 6), but it isn't one of the three this specific question tests
-   for — a reminder that "is this a real fact" and "is this what THIS
-   question wants" are different checks. This skill check also
-   repeatedly used **fabricated-but-plausible distractors** (fake
-   deployment options like "Azure HPC," a fake workload type "Autonomous
-   Blockchain Database," a fake network access tier "OCI peered VCNs
-   only") — see [[OCI Architect Professional Tips]] for the consolidated
-   five-step strategy against this recurring exam pattern.
-9. **BYOK import requires wrapping the key with the Vault's own RSA
-   wrapping key** — flagged low-confidence in `[[practice-1-updated]]` Q41
-   (best-guess answer A). Directly confirmed independently and with high
-   confidence elsewhere this session: Note 5's Vault section documents the
-   wrapping-key mechanism in detail (every vault ships one by default,
-   `RSA_OAEP_AES_SHA256`, used specifically to wrap external key material on
-   import) — worth reconciling the practice-bank phrasing against that
-   confirmed mechanism rather than treating it as still uncertain.
+8. ✅ **COMPLETE** — **Autonomous Database provisioning inputs:
+   deployment type, network access type, workload type — NOT compute
+   model/shape.** Missed, uncorrected even after a retry, on Skill Check:
+   Autonomous Database Q1 — selected "compute model and shape" over
+   "network access type" as one of the three core provisioning inputs.
+   Compute model IS a real provisioning-time choice (locked afterward),
+   and so is the superuser/admin password field — **every option in that
+   question was a genuinely real Console field**, not a fabricated
+   distractor; the trap was scope (which three *this* question wants),
+   not authenticity. This skill check also repeatedly used
+   **fabricated-but-plausible distractors elsewhere** (fake deployment
+   options like "Azure HPC," a fake workload type "Autonomous Blockchain
+   Database," a fake network access tier "OCI peered VCNs only") — see
+   [[OCI Architect Professional Tips]] for the consolidated five-step
+   strategy against that separate pattern. Full list of every real
+   provisioning-screen field, and this exact "real fact vs. right scope"
+   lesson, now documented in [[6. Databases — OCI Database, NoSQL,
+   Caching, DR]]'s "Autonomous Database Serverless Provisioning" section.
+9. ✅ **COMPLETE** — **BYOK import requires wrapping the key with the
+   Vault's own RSA wrapping key.** Originally flagged low-confidence in
+   `[[practice-1-updated]]` Q41 (best-guess answer A) — now confirmed
+   correct and reconciled against Note 5's detailed, hands-on-confirmed
+   mechanism: every vault ships a built-in RSA wrapping keypair by
+   default (not user-created, cannot be created/deleted/rotated); on
+   BYOK import, your external key material is encrypted with the vault's
+   **public** wrapping key before it ever leaves your environment, using
+   the fixed algorithm `RSA_OAEP_AES_SHA256`, and only unwrapped by the
+   matching private half once inside OCI's HSM boundary — the raw key
+   material is never transmitted or stored in plaintext at any point.
+   See [[5. Security — OCI IAM, WAF, Certificates, Vault, Cloud Guard]]'s
+   "Three key types Vault recognizes" section (Wrapping keys).
 10. **OCI Audit event retention period is configurable (90–365 days), not
     fixed** — flagged low-confidence in `[[practice-1-updated]]` Q21
     ("retention period cannot be modified" was reasoned as the *false*
@@ -240,13 +249,16 @@ since they were never actually attempted and self-graded.
     documented in Note 5 before taking the question — a reminder to
     actually apply what's written, not just have it recorded. See
     [[5. Security — OCI IAM, WAF, Certificates, Vault, Cloud Guard]].
-17. **"A microservice" (the individual unit) vs. "microservices
-    architecture" (the overall pattern) are different definitions — read
-    exam stems literally.** Missed on Practice Exam 997-26 Q9 — picked the
-    architecture-style definition when the question asked what a single
-    microservice *is*. Oracle's own framing: a microservice is small, has
-    one well-defined responsibility, and runs in its own process. See
-    [[14. Serverless — OCI Functions, Events, API Gateway]].
+17. ✅ **COMPLETE** — **"A microservice" (the individual unit) vs.
+    "microservices architecture" (the overall pattern) are different
+    definitions — read exam stems literally.** Missed on Practice Exam
+    997-26 Q9 — picked the architecture-style definition when the
+    question asked what a single microservice *is*. Oracle's own
+    framing: a microservice is small, has one well-defined
+    responsibility, and runs in its own process. Reviewed and understood
+    — full write-up in [[14. Serverless — OCI Functions, Events, API
+    Gateway]]'s "What a microservice actually is — a definitional trap,
+    not an OCI-specific fact" section.
 
 ### Week 4 — Retrieval practice and booking gate
 
