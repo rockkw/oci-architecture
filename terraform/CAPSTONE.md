@@ -36,7 +36,7 @@ Internet ──► LB (reserved IP, HTTP + HTTPS via OCI Certificates)       pub
 
 | # | Phase | Exam domains | Reuses | Status |
 |---|---|---|---|---|
-| 1 | Fix MyMagnet blockers (HTTPS certificate chain, app reachability) | Security | `lab-mymagnet-stack` | Reachability fixed; HTTPS removed in config, apply deferred (see Deferred) |
+| 1 | Fix MyMagnet blockers (HTTPS certificate chain, app reachability) | Security | `lab-mymagnet-stack` | Done 2026-09-24: HTTP-only via LB, HTTPS removed, fault domains split, backup dynamic group fixed |
 | 2 | SQLite → Autonomous AI Database (26ai) + AI Vector Search | Databases | `lab-basedb-stack` (network pattern), `lab-mymagnet-stack` (Vault, dynamic group) | `lab-capstone-adb-stack` written: validate clean, plan 10 to add. `sql/` scripts and MyMagnet app patch drafted. Apply, SQL and app rollout deferred (see Deferred) |
 | 3 | Enrichment pipeline, with a placeholder tag at first so it's testable without a GPU | Cloud-Native, Security | `lab-document-understanding-stack`, `lab-func-stack` | `lab-capstone-enrich-stack` written: validate clean, plan 9 to add, 9 unit tests pass. Image build/push and apply deferred (see Deferred). ADB write is a marked hook in func.py |
 | 4 | vLLM on OKE GPU behind an internal LB; point the Function at it | Cloud-Native | `lab-oke-stack`, `lab-oke-gpu-stack` | Built and validated (`lab-capstone-vllm-stack`); not applied (see Deferred) |
@@ -73,9 +73,14 @@ Two other fixes, found while re-planning on 2026-09-24:
   instances.
 
 Inputs are now in `lab-mymagnet-stack/terraform.tfvars` (gitignored), recovered
-from state, so `terraform plan` runs with no `-var` flags. The current plan is
-0 to add, 1 to change (the instance dynamic group), 1 to destroy (the 443 NSG
-rule).
+from state, so `terraform plan` runs with no `-var` flags.
+
+**Applied 2026-09-24** (0 added, 2 changed, 1 destroyed): 443 NSG rule removed,
+instance 1 moved to FAULT-DOMAIN-1 (instance 2 stays in FD-2), instance dynamic
+group now matches the live instances. Verified: both instances RUNNING in
+separate fault domains, both LB backends `OK` (briefly `WARNING` while instance
+1 restarted), `curl http://137.131.32.68/` returns 200 with the Magnet Library
+page.
 
 ### Phase 2 notes: Autonomous AI Database (26ai)
 
@@ -169,7 +174,7 @@ Primary is Phoenix and standby is Ashburn, which is also the home region.
 
 | Piece | Design | RPO | RTO | Exam concept |
 |---|---|---|---|---|
-| Fault domains | **Both instances sit in PHX-AD-1 / FAULT-DOMAIN-2**, so one rack fault can take down both (checked in state on 2026-09-24). `lab-mymagnet-stack` now pins `mymagnet_1` to FD-1 and `mymagnet_2` to FD-2 (not yet applied). Oracle updates this in place: a running instance is stopped, moved and restarted. Keep the other node serving during the move. If the target FD has no A1 capacity, the instance stays stopped. | Per-node SQLite on the failed node, until Phase 2 moves data to ADB | ≈ health-check interval (LB drops the backend) | FDs = anti-affinity within one AD. Phoenix has 3 ADs, but moving ADs replaces the instance (new IP, empty SQLite) |
+| Fault domains | **Both instances sit in PHX-AD-1 / FAULT-DOMAIN-2**, so one rack fault can take down both (checked in state on 2026-09-24). `lab-mymagnet-stack` now pins `mymagnet_1` to FD-1 and `mymagnet_2` to FD-2 (applied 2026-09-24). Oracle updates this in place: a running instance is stopped, moved and restarted. Keep the other node serving during the move. If the target FD has no A1 capacity, the instance stays stopped. | Per-node SQLite on the failed node, until Phase 2 moves data to ADB | ≈ health-check interval (LB drops the backend) | FDs = anti-affinity within one AD. Phoenix has 3 ADs, but moving ADs replaces the instance (new IP, empty SQLite) |
 | Backup bucket | `oci_objectstorage_replication_policy` on `mymagnet-backups`, Phoenix → Ashburn. It needs the same `objectstorage-us-phoenix-1 manage object-family` service policy that this phase's stack adds. The target is read-only until the policy is deleted, which is the promotion step. | Async, typically minutes | Minutes (delete the policy, repoint the app) | Replication vs backup per tier |
 | DNS failover | Traffic Management **FAILOVER** steering policy. Answer 1 is the Phoenix LB IP and answer 2 is an Ashburn LB. An HTTP health check on `/` with TTL around 30 s. **Blocked:** it needs a public DNS zone for a domain, and none is managed in OCI yet. | n/a | Health-check failures × interval + TTL | Layer 3 failover: automatic, bounded by TTL |
 | Autonomous DB (Phase 2) | Autonomous Data Guard with a **local** standby (automatic failover) plus a **cross-region** standby in Ashburn. A private endpoint needs a VCN and subnet in Ashburn. | Local 0 s; cross-region ≤ 1 min (manual failover) | Local 2 min; cross-region < 10 min | Oracle ADB doc numbers. Cross-region has **no automatic failover**. Backup-based DR is the cheaper option with a higher RTO |
@@ -193,14 +198,12 @@ Items blocked during autonomous work. Each needs a person to run or approve it.
 
 | Item | Why it's deferred | How to finish |
 |---|---|---|
-| Apply `lab-mymagnet-stack` (removes the 443 NSG rule, fixes the stale instance dynamic group, moves instance 1 to FD-1) | Auto mode blocks unattended `terraform apply`, IAM changes, and removing TLS | `cd terraform/lab-mymagnet-stack && terraform plan && terraform apply` |
 | HTTPS on the LB | Removed by decision; the CA fix needs an IAM grant | Re-add the CA chain with the dynamic group above |
 | Phase 4: bring up the GPU pool and vLLM, then run the smoke test | Needs `terraform apply` and `kubectl apply` against the real cluster, and starts GPU billing (~$2/h) | Follow LABS.md, "lab-capstone-vllm-stack" runbook: `(cd terraform/lab-oke-stack && terraform apply)`, `(cd terraform/lab-oke-gpu-stack && terraform apply)`, `(cd terraform/lab-capstone-vllm-stack && terraform apply && terraform output -raw vllm_manifest > /tmp/vllm.yaml)`, `kubectl create namespace vllm`, create the `vllm-api-key` Secret, `kubectl apply -f /tmp/vllm.yaml`, run the `curl`, then tear down the same day |
 | Phase 4: can Select AI call vLLM over HTTP? | Unverified. Select AI may require HTTPS, and the private CA certificate is blocked on IAM | With vLLM up, create a Select AI profile with `provider_endpoint` = `http://<LB_IP>` from the ADB. If it rejects HTTP, add TLS at the LB (LABS.md, "HTTPS later") |
 | Apply `lab-capstone-observability-stack` (19 resources, 4 of them IAM) | Auto mode blocks `terraform apply` and IAM changes | `cd terraform/lab-capstone-observability-stack && terraform plan -var alarm_email=<you@example.com> && terraform apply -var alarm_email=<you@example.com>`, then click the email confirmation link |
 | Install the Unified Monitoring Agent on both A1 instances | The Custom Logs Monitoring plugin isn't supported on Ampere A1; the manual aarch64 install needs SSH plus an `oci session authenticate` token | On each instance: `oci os object get --namespace axmjwnk4dzjv --bucket-name unified-monitoring-agent-ub-bucket --name unified-monitoring-agent-ub-24-<ver>.aarch64.deb --file uma.deb --auth security_token && sudo dpkg -i uma.deb` (get `<ver>` from `versionInfoV2.yml` in bucket `unified-monitoring-agent-config`) |
-| Spread the MyMagnet instances across fault domains | Config done (FD-1/FD-2 pinned in `lab-mymagnet-stack`; plan confirms an in-place move of instance 1). Apply needs a person and briefly stops instance 1 | Included in the `lab-mymagnet-stack` apply row above (plan: 0 add, 2 change, 1 destroy) |
-| Build and push the Phase 3 function image | `docker build` needs the Docker Desktop daemon, which asked for privileged access when started (needs a person); pushing images is blocked in auto mode | `cd terraform/lab-capstone-enrich-stack && docker login phx.ocir.io -u 'idtlmgo3jgde/<username>' && docker build --platform linux/amd64 -t phx.ocir.io/idtlmgo3jgde/capstone/enrich:0.0.1 . && docker push phx.ocir.io/idtlmgo3jgde/capstone/enrich:0.0.1` |
+| Push the Phase 3 function image | Built locally on 2026-09-24 (`phx.ocir.io/idtlmgo3jgde/capstone/enrich:0.0.1`, linux/amd64, 738 MB; handler and `oci` SDK import OK inside the image). Pushing images is blocked in auto mode | `docker login phx.ocir.io -u 'idtlmgo3jgde/<username>'` (auth token as password), then `docker push phx.ocir.io/idtlmgo3jgde/capstone/enrich:0.0.1` |
 | Apply `lab-capstone-enrich-stack` (9 resources: 2 buckets, NSG + rule, Functions app + function, Events rule, dynamic group, policy) | Auto mode blocks `terraform apply` and IAM changes; needs the image above first | `cd terraform/lab-capstone-enrich-stack && terraform plan && terraform apply`, then upload a test object to `mymagnet-results` and read `enriched/<name>.enrichment.json` from `mymagnet-enrichment` (LABS.md has the commands) |
 | Point the Phase 3 function at vLLM | Needs Phase 4 running, the vLLM API key stored as a Vault secret, and an apply (config + one IAM statement) | `cd terraform/lab-capstone-enrich-stack && terraform apply -var llm_endpoint=http://<internal-lb-ip> -var llm_model=qwen2.5-7b-instruct -var llm_api_key_secret_ocid=<vault-secret-ocid>` |
 | Apply `lab-capstone-adb-stack` (10 resources: ADB, NSG + rule, AES key, 2 secrets, bucket, 1 IAM policy, 2 random passwords) | Auto mode blocks `terraform apply` and IAM changes, and the ADB starts paid billing (2 ECPUs) | `cd terraform/lab-capstone-adb-stack && terraform plan && terraform apply`; stop the database between sessions with `oci db autonomous-database stop --autonomous-database-id "$(terraform output -raw autonomous_database_id)"` |
