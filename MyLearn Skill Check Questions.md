@@ -483,3 +483,115 @@ D. IAM policies
 - Watch for options that **sound plausible but describe manual/partial mechanisms** when the scenario asks for something automated/complete (Q1's A–C), or that invoke a real OCI concept in the wrong role (Q3's firewall/auth-service mischaracterizations of Bastion) — the same fabricated-plausible-distractor pattern already flagged at the top of this file for the skill-check questions.
 
 ---
+
+## Practice Exam 997-26 (MyLearn, 50 questions, timed, live attempt)
+
+*Source: [Practice Exam: Oracle Cloud Infrastructure Architect Professional](https://mylearn.oracle.com/ou/course/practice-exam-oracle-cloud-infrastructure-architect-professional/163237/271344) — a full 50-question timed mock exam, distinct from the per-module skill checks and the workshop's 5 sample questions above. Captured live, question by question, as taken; correct answers verified against Oracle's official documentation where not already covered in these notes (cited inline), since this practice exam doesn't show correct-answer explanations inline the way skill checks do.*
+
+### Q1 — OKE / kubectl cluster access (multi-select, choose TWO)
+You are configuring access to an OCI Container Engine for Kubernetes (OKE) cluster using kubectl. Which TWO statements are correct regarding the configuration required to access the cluster?
+
+A. To access the cluster using kubectl, you have to set up a Kubernetes configuration file for the cluster. The kubeconfig file by default is named `config` and stored in the `$HOME/.kube` directory.
+B. You cannot set up Cloud Shell access to the cluster if the cluster's Kubernetes API endpoint has a private IP address.
+C. When a cluster's Kubernetes API endpoint has a public IP address, you can access the cluster in Cloud Shell by setting up a kubeconfig file.
+D. To access the cluster using kubectl, you have to set up a Kubernetes manifest file for the cluster. The kubeconfig file by default is named config and stored in the `$HOME/.manifest` directory.
+E. Generating an API signing key pair is a mandatory step while setting up cluster access using a local machine if the public key is not already uploaded in the console.
+
+**Your answer: B, C — Confirmed CORRECT**, verified directly against Oracle's docs (Setting Up Cluster Access / Accessing a Cluster Using Kubectl). Cloud Shell access to an OKE cluster requires a **public** Kubernetes API endpoint; a private endpoint blocks direct Cloud Shell access entirely (Bastion tunneling is the documented workaround, not covered by this question's options). A is a plausible-sounding near-miss — the real kubeconfig default location is `$HOME/.kube/config`, not what A/D describe once you check A's own wording matches the real fact but wasn't selected as one of the two (only two answers required, and B+C are the ones the question is testing). D is a fabricated distractor (`$HOME/.manifest` isn't real). **Added to [[12. Containers — OCI OKE, Container Instances, OCIR]]'s "Accessing a cluster with kubectl" section.**
+
+### Q2 — Compute / Instance Pool Autoscaling
+An e-commerce company is running on OCI and many compute instances remain unused for most of the year except during Black Friday and Christmas. You suggest they use OCI's Autoscaling feature and present a slide showcasing its features. Which option is accurate in your presentation to the customer?
+
+A. Autoscaling requires an instance pool as a prerequisite so that it can automatically adjust the number of compute instances in an instance pool.
+B. During the cooldown period, OCI stops collecting monitoring metrics for the instance pool.
+C. When an instance pool scales in, instances are terminated in this order: the number of instances is balanced across availability domains, and then balanced across fault domains. Finally, within a fault domain, the **newest** instance is terminated first.
+D. Autoscaling does not rely on performance metrics such as CPU utilization that are collected by OCI Monitoring service to trigger Autoscaling events.
+
+**Your answer: C — INCORRECT.** Verified directly against Oracle's Autoscaling docs: the real termination order is AD-balance → FD-balance → **oldest** instance terminated first within a fault domain, not newest. This is a single-word distractor swap on an otherwise-correct-sounding option — a real trap pattern for this exam (see [[OCI Architect Professional Tips]]'s fabricated-distractor writeup). **B and D are also false**: cooldown does not stop metric collection (it only suppresses new scaling actions), and autoscaling absolutely does rely on Monitoring-service metrics like CPU utilization as triggers. **A's framing is backwards/confused** — an instance pool is the thing autoscaling is configured against, not a "prerequisite" in the sense implied; not the intended correct answer either. None of the four options as tested is fully correct except C's structural framing (AD→FD→oldest), with only the "newest" word being wrong — **added to [[3. Compute — OCI Compute, Instance Pools, Load Balancers, Volumes]]'s "High availability and scaling" section with the corrected fact.**
+
+### Q3 — Serverless / OCI Vault + Oracle Functions
+Your organization is developing serverless applications with Oracle Functions. Many of these functions will need to store state data in a database which will require the use of appropriate credentials. However, your corporate security standards mandate the encryption of secret information, such as database passwords. As a solutions architect, which approach would you direct your team to follow to satisfy this security requirement?
+
+A. Use the OCI Vault service to auto-encrypt the password, then set an application-level configuration variable to reference the auto-decrypted password inside your function container.
+B. Leverage application-level configuration variables to store passwords because they are automatically encrypted by Oracle Functions.
+C. Encrypt the password using the OCI Vault service, then decrypt this password in your function code with the generated key.
+D. Use the OCI Console to enter the password in the function configuration section in the provided input field.
+
+**Your answer: A — likely INCORRECT** (my assessment from Oracle documentation, not from an in-app answer key — flagged as such; re-verify against the exam's own grading/summary screen if you get one). Verified against Oracle's own "Using Key Management To Encrypt And Decrypt Configuration Variables" guidance for Oracle Functions: there is **no "auto-decrypt" mechanism** where a config variable transparently references a decrypted secret. The real, documented flow is (1) encrypt the password **offline**, outside the function, using a Vault-managed key, (2) store the **ciphertext** as a config variable, (3) **the function's own code calls the Vault/KMS Decrypt API at runtime** to get the plaintext back. That matches **C** exactly ("decrypt this password in your function code with the generated key"), not A's "auto-decrypt" framing. **B is false** (Oracle Functions does not auto-encrypt config variables), **D is false** (plaintext passwords in Console config fields directly violates the stated encryption mandate). **Added the corrected mechanism to [[14. Serverless — OCI Functions, Events, API Gateway]]'s "OCI Functions architecture" section.**
+
+### Q4 — Cloud-Native / API Gateway DDoS mitigation
+As a Solutions Architect, one of your cloud-native developers has written a web service for your company. They have configured the OCI API Gateway service to expose the HTTP backend. However, your security team has indicated that the web service must handle Distributed Denial-of-Service (DDoS) attacks. You are time-constrained and you need to ensure that this requirement is implemented as soon as possible. What should be done in this scenario?
+
+A. Create and deploy an Oracle Integration Cloud flow to implement a DDoS attack mitigation for that HTTP backend.
+B. Configure the Virtual Cloud Network that hosts the API Gateway to enable IP address segregation for that HTTP backend to mitigate DDoS attacks.
+C. Create and deploy an Oracle Function that implements DDoS attack mitigation to be invoked from the API Gateway for that HTTP backend.
+D. Direct the developer to immediately update the web service to implement DDoS mitigation logic.
+E. Configure rate limiting for that HTTP backend in the API Gateway.
+
+**Your answer: B — INCORRECT.** Verified directly against Oracle's API Gateway docs: **"IP address segregation" is not a real OCI VCN/API Gateway feature** — a fabricated-sounding distractor. The correct answer is **E**: OCI API Gateway has a **native rate-limiting request policy**, configured directly on the deployment/route — the fastest, no-new-service, no-code-change mitigation available, which is exactly what "time-constrained... as soon as possible" is testing for. A, C, and D all require building/deploying something new (an Integration Cloud flow, a custom Function, or a code change) — slower and heavier than flipping on an existing gateway policy. **Added to a new "API Gateway request policies" section in [[14. Serverless — OCI Functions, Events, API Gateway]].**
+
+### Q5 — Security / OCI Certificates service automation
+OracleRetail Inc. is an online marketplace that wants to enhance the security of its customer transactions by ensuring encrypted connections using TLS on OCI. To prevent service disruptions due to expired certificates, they decide to implement OCI Certificates service for automated certificate provisioning and renewal. What is a key advantage of automating TLS certificate management in OCI?
+
+A. Minimizes the risk of manual errors during certificate issuance and renewal
+B. Ensures that applications do not require regular security updates
+C. Eliminates the need for access control and authentication mechanisms
+D. Increases the speed of data transmission by optimizing encryption protocols
+
+**Your answer: A — Confirmed CORRECT** by elimination alone, no external verification needed: B, C, and D each make a false absolute claim (automating certificate renewal has no bearing on whether apps need security updates, doesn't eliminate access control/auth, and doesn't touch transmission speed/protocol optimization). A is the only option describing what certificate automation actually does — remove human error from a recurring operational task.
+
+### Q6 — Networking / VCN subnet deletion blocked by an attached VNIC
+You are part of a project team working in the development environment created in OCI. You realize that the CIDR block specified for one of the subnets in a Virtual Cloud Network (VCN) is not correct and want to delete the subnet. While deleting you get an error indicating that there are still resources that you must delete first. The error includes the OCID of the VNIC that is in the subnet. Which action should be taken to troubleshoot this issue?
+
+A. Use OCI CLI to delete the subnet using the `--force` option.
+B. Use OCI CLI to call the "network vnic" and "compute vnic-attachment" operations to find out the parent resource of the VNIC.
+C. Use OCI CLI to delete the VNIC first and then delete the subnet.
+D. Copy and paste the OCID of the VNIC in the search box of the OCI Console to find out the parent resource of the VNIC.
+
+**Your answer: D — likely INCORRECT** (my assessment from Oracle's official VCN Troubleshooting doc, not from an in-app answer key — re-verify against the exam's own grading/summary if available). Oracle's documented method is the **CLI**, not the Console search box: `oci network vnic get --vnic-id <VNIC_OCID>` returns the VNIC's `display-name`, which reveals the parent resource (e.g. `"VNIC for LB ocid1.loadbalancer..."` for a load balancer, or a mount-target-style name for File Storage) — matching **B**'s framing ("use OCI CLI to call... operations to find out the parent resource") far more closely than D's Console-search-box approach. `--force` (A) isn't a real documented flag/practice for this, and you can't directly delete a service-managed VNIC (C) without first deleting/reconfiguring its parent resource — the VNIC is owned by that resource, not independently deletable. **Added a new "Troubleshooting: subnet/VCN deletion blocked by an attached VNIC" subsection to [[9. Networking — OCI VCN, DRG, Gateways, Load Balancers]] with the full documented remediation sequence.**
+
+### Q7 — Networking / DNS Traffic Management, geo-routing
+As a solution architect, you are designing a web application to be deployed across multiple OCI regions for a global audience. Your goal is that users from each region should access the application web servers deployed in their own geographical OCI location. Which OCI feature can be used to achieve this?
+
+A. OCI Traffic Management IP Prefix steering policy
+B. OCI Public Load Balancers
+C. OCI Global Load Balancers
+D. OCI Traffic Management GeoLocation steering policy
+
+**Your answer: D — Confirmed CORRECT**, already documented in [[9. Networking — OCI VCN, DRG, Gateways, Load Balancers]] Section 7: Traffic Management steering policies make DNS answers based on policy, endpoint health, **geography**, ASN/path, or weighted distribution — geolocation-based steering is exactly the named mechanism for routing users to a region-specific deployment based on where they're connecting from. Load balancers (B) distribute traffic across backends within a region/endpoint, not across geographically separate deployments; "OCI Global Load Balancers" (C) isn't a real distinct OCI product name — likely a fabricated distractor; IP Prefix steering (A) is a real but different steering-policy type (routes by source IP/ASN block, not geography).
+
+### Q8 — Security / OCI Vault KMS CLI, crypto vs. management endpoint
+When trying to encrypt plaintext using CLI, the developer gets a Service Error running:
+```
+oci kms crypto encrypt --key-id ocid1.key.oc1.iad.bbptfrr5aaeuk.abuwcljt32arg6e6xlswgluvc52lnrtk62jq7jenfejfxlhb46nkav3zhsta --plaintext foobar --endpoint https://bbptfrr5aaeuk-management.kms.us-ashburn-1.oraclecloud.com
+```
+Which issue in the command caused the Service Error?
+
+A. The plaintext needs to be in JSON form.
+B. The user should pass the key version OCID instead of the key OCID.
+C. The developer forgot to specify the region.
+D. The developer has the wrong endpoint.
+
+**Your answer: C — likely INCORRECT.** Already-documented fact in this same note file (Section on "Every vault exposes two distinct, separately-addressed API endpoints") makes this diagnosable directly: `oci kms crypto encrypt` is a **cryptographic (data-plane)** operation and requires the vault's **Cryptographic Endpoint** (`https://<vault-id>-crypto.kms.<region>...`); the command instead supplies a **Management Endpoint** (note the `-management.kms.` in the hostname) — the control-plane URL used for key lifecycle operations (create/rotate/disable), not crypto operations. That's **D**, not C. Region was never missing — it's present in both the key OCID's `.iad.` segment and the endpoint's `us-ashburn-1` substring. `--key-id` (option B's target) correctly takes the master key OCID as shown; a key-version OCID is a separate, optional `--key-version-id` flag, not a replacement. `--plaintext` (option A) takes a raw string, not JSON. **This exact endpoint-type mismatch was already documented in this file** (search "Every vault exposes two distinct" above) — added a direct practice-exam cross-reference confirming the trap.
+
+### Q9 — Cloud-Native / definition of "a microservice"
+A company is experiencing performance issues with its monolithic architecture for an e-commerce website. The software development team is considering implementing a new design approach to improve performance and scalability. In the context of software architecture, what is a microservice?
+
+A. A style of design for enterprise systems based on a loosely coupled component architecture
+B. A small program that represents discrete logic that executes within a well-defined boundary on dedicated hardware
+C. A cloud-based service for testing and deploying microcode
+D. A software framework for automating user interface testing
+
+**Your answer: A — likely INCORRECT.** This is a definitional trap, not an OCI-specific fact: the question asks what **a** microservice is (the individual unit), not what microservices **architecture** is (the overall pattern). A's phrasing ("a style of design... loosely coupled component architecture") describes the architectural pattern as a whole. Oracle's own developer docs describe an individual microservice as having "a specific, well-defined responsibility," being **small**, and running in its own process — matching **B**'s phrasing ("a small program that represents discrete logic that executes within a well-defined boundary") far more precisely as the definition of one unit. C and D are both fabricated/irrelevant ("microcode" and "UI testing framework" have nothing to do with microservices). **Added this A-vs-B definitional distinction to a new section at the top of [[14. Serverless — OCI Functions, Events, API Gateway]].**
+
+### Q10 — Networking / private subnet reaching a public-endpoint Autonomous Database (choose TWO)
+You have deployed an application server in a private subnet in your VCN. For the database, you have provisioned an Autonomous Transaction Processing (ATP) serverless instance. However, you are unable to connect to the database instance from your application server. Which two steps would you need to enable this connectivity?
+
+A. Add a stateful egress rule to the security list associated with your private subnet. Destination CIDR: 0.0.0.0/0, Protocols: All Protocols
+B. Add a remote peering connection from your VCN to the ATP VCN.
+C. Add an internet gateway to your VCN and add a route rule to your private subnet route table. CIDR: 0.0.0.0/0, Target: Internet Gateway
+D. Create a NAT Gateway and add the following route rule to the route table of a private subnet. CIDR: 0.0.0.0/0, Target: NAT Gateway
+
+**Your answer: A, D — Confirmed CORRECT**, verified against Oracle's own guidance: Autonomous Database (with a public endpoint) is one of the specific OCI services reachable through **either** NAT Gateway or Service Gateway when both exist in a VCN — and when both are available, the **more specific route wins, which is the NAT Gateway**. So the real fix is (1) a NAT Gateway with a `0.0.0.0/0` route in the private subnet's route table, plus (2) a stateful egress security-list rule permitting that outbound traffic — exactly D and A. B (remote VCN peering) is wrong because ADB isn't sitting in a peer VCN you control; C (adding an Internet Gateway to a **private** subnet) directly contradicts the subnet's own private status and isn't how private subnets reach public endpoints. **This is a real exception to the "prefer Service Gateway for Oracle services" general rule already in this repo — added the exception, with the NAT-Gateway-IP-as-connection-source caveat, to [[9. Networking — OCI VCN, DRG, Gateways, Load Balancers]]'s "NAT and service-gateway traps" subsection.**
+
+---
