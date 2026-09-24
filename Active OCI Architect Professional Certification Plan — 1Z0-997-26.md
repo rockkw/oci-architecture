@@ -117,34 +117,61 @@ finish it, and correct this list if any of those three turn out to
 actually match your originally selected answer.
 since they were never actually attempted and self-graded.
 
-1. **Network Firewall four-stage pipeline order** — Decryption Rules
-   evaluate *first*, then Security Rules, then Tunnel Inspection, then NAT.
-   Got this backwards on Skill Check: Architect Security Solutions Q4
-   (selected "security rules first, then decryption" — wrong order).
-2. **Dedicated KMS's core value prop is single-tenant/full control, not
-   shared.** Got this backwards on the same skill check Q5 (selected "DKMS
-   offers a shared HSM partition managed by Oracle" — the opposite of
-   DKMS's actual "Full Control"/single-tenant-partition benefit).
-3. **Why a dynamic group is needed for Certificate Authority creation** —
-   it's for the CA itself to make API calls to Vault/KMS as a resource
-   principal (matches the real `OCI-SM-CA-DG` dynamic group seen live in
-   Console), not "to create TLS certs after the CA is created." Got this
-   wrong on the same skill check Q2 — and this is the exact same
-   unresolved authorization gap `terraform/LABS.md`'s `lab-mymagnet-stack`
-   entry has been stuck on (real IAM policy grants for the CA's key access
-   still failing) — a live, hands-on confirmation of a concept this test
-   also caught as a knowledge gap.
-4. **Kubernetes Secret vs. ConfigMap for registry credentials.** Got this
-   wrong on Skill Check: Design Cloud-Native... Q1 (selected ConfigMap —
-   ConfigMap is for non-sensitive config only; registry credentials need a
-   `kubernetes.io/dockerconfigjson`-type Secret, referenced via
-   `imagePullSecrets`). A general Kubernetes concept, not OCI-specific —
-   easy to blank on if K8s fundamentals are rusty.
-5. **OCIR retention policy terminology: Global vs. Custom, not "Local."**
-   Got this wrong on the same skill check Q3 (selected a "local" retention
-   policy option that isn't real OCIR terminology at all) — the real second
-   policy type alongside Global is called **Custom**, scoped to specific
-   repositories explicitly added to it.
+1. ✅ **COMPLETE** — **Network Firewall four-stage pipeline order** —
+   Decryption Rules evaluate *first*, then Security Rules, then Tunnel
+   Inspection, then NAT. Got this backwards on Skill Check: Architect
+   Security Solutions Q4 (selected "security rules first, then
+   decryption" — wrong order). Decryption goes first because every later
+   stage needs to actually see the traffic's real content to inspect it
+   meaningfully; NAT goes last because it only rewrites where allowed
+   traffic goes, once the allow/deny decision is already made. Already
+   documented in detail in [[5. Security — OCI IAM, WAF, Certificates,
+   Vault, Cloud Guard]]'s "How the Network Firewall processes every
+   packet — the four-stage pipeline" section.
+2. ✅ **COMPLETE** — **Dedicated KMS's core value prop is
+   single-tenant/full control, not shared.** Got this backwards on the
+   same skill check Q5 (selected "DKMS offers a shared HSM partition
+   managed by Oracle" — the opposite of DKMS's actual "Full
+   Control"/single-tenant-partition benefit). Already documented in
+   detail in [[5. Security — OCI IAM, WAF, Certificates, Vault, Cloud
+   Guard]]'s "Dedicated Key Management" section, including all four
+   named benefits (Full Control, High Security Standards/FIPS 140-2
+   Level 3, PKCS#11 interfaces, Scalability/Availability) and the
+   zero-default-service-limit provisioning trap.
+3. ✅ **COMPLETE (concept)** — **Why a dynamic group is needed for
+   Certificate Authority creation** — it's for the CA itself to make API
+   calls to Vault/KMS as a resource principal (matches the real
+   `OCI-SM-CA-DG` dynamic group seen live in Console), not "to create TLS
+   certs after the CA is created." Got this wrong on the same skill check
+   Q2 — confirmed correct by MyLearn's own grading, and now written up in
+   [[5. Security — OCI IAM, WAF, Certificates, Vault, Cloud Guard]]'s
+   "Why a dynamic group is needed for Certificate Authority creation"
+   section. **Note the exam concept being marked complete here is
+   separate from the actual working IAM policy statement**, which
+   remains genuinely unresolved in `terraform/LABS.md`'s
+   `lab-mymagnet-stack` entry (real CA creation against a real KMS key
+   still fails with an authorization error after two different policy
+   attempts) — don't treat this item as "the lab is fixed," only as "the
+   exam-tested concept is confirmed correct."
+4. ✅ **COMPLETE** — **Kubernetes Secret vs. ConfigMap for registry
+   credentials.** Got this wrong on Skill Check: Design Cloud-Native...
+   Q1 (selected ConfigMap — ConfigMap is for non-sensitive config only;
+   registry credentials need a `kubernetes.io/dockerconfigjson`-type
+   Secret, referenced via `imagePullSecrets`). A general Kubernetes
+   concept, not OCI-specific — easy to blank on if K8s fundamentals are
+   rusty. Full write-up, including the exact `kubectl create secret
+   docker-registry` command shape, now in [[12. Containers — OCI OKE,
+   Container Instances, OCIR]]'s "Managing OCIR images and security"
+   section.
+5. ✅ **COMPLETE** — **OCIR retention policy terminology: Global vs.
+   Custom, not "Local."** Got this wrong on the same skill check Q3
+   (selected a "local" retention policy option that isn't real OCIR
+   terminology at all) — the real second policy type alongside Global is
+   called **Custom**, scoped to specific repositories explicitly added to
+   it. "Local" is a plausible-sounding synonym substituted for the real
+   product term, not a fully fabricated feature — a subtler distractor
+   variant. Already documented in [[12. Containers — OCI OKE, Container
+   Instances, OCIR]]'s "Lifecycle/retention policies" section.
 6. ✅ **COMPLETE** — **Terraform resource *type* is provider-specific;
    resource *name* is not.** Missed on Skill Check: Deliver
    Infrastructure-as-code Q5 (the FALSE-statement question) —
@@ -156,13 +183,16 @@ since they were never actually attempted and self-graded.
    Full write-up now in [[1. DevOps — OCI DevOps, CI-CD, Observability]]'s
    new "Terraform / Resource Manager — syntax precision, not just IaC
    concepts" section.
-7. **Monitoring is one of Oracle's three canonical HA design pillars
-   (Redundancy/Failover/Monitoring) — not Scalability.** Missed, uncorrected,
-   on Skill Check: Design Scalable and Elastic Solutions... Q5 — a real
-   framing mismatch between Oracle's specific three-pillar answer and the
-   more intuitive general "scalability + resilience" instinct. The one
-   skill-check miss across all four that was never caught before
-   submitting — worth extra attention for that reason alone.
+7. ✅ **COMPLETE** — **Monitoring is one of Oracle's three canonical HA
+   design pillars (Redundancy/Failover/Monitoring) — not Scalability.**
+   Missed, uncorrected, on Skill Check: Design Scalable and Elastic
+   Solutions... Q5 — a real framing mismatch between Oracle's specific
+   three-pillar answer and the more intuitive general "scalability +
+   resilience" instinct. The one skill-check miss across all four that
+   was never caught before submitting — worth extra attention for that
+   reason alone. Full write-up now at the top of [[3. Compute — OCI
+   Compute, Instance Pools, Load Balancers, Volumes]]'s "High
+   availability and scaling" section.
 8. ✅ **COMPLETE** — **Autonomous Database provisioning inputs:
    deployment type, network access type, workload type — NOT compute
    model/shape.** Missed, uncorrected even after a retry, on Skill Check:
@@ -194,12 +224,29 @@ since they were never actually attempted and self-graded.
    material is never transmitted or stored in plaintext at any point.
    See [[5. Security — OCI IAM, WAF, Certificates, Vault, Cloud Guard]]'s
    "Three key types Vault recognizes" section (Wrapping keys).
-10. **OCI Audit event retention period is configurable (90–365 days), not
-    fixed** — flagged low-confidence in `[[practice-1-updated]]` Q21
-    ("retention period cannot be modified" was reasoned as the *false*
-    statement, i.e. retention actually IS configurable) — worth a direct doc
-    check before the exam since this was never independently confirmed
-    in-session the way item 9 was.
+10. ✅ **COMPLETE — original guess was WRONG, now corrected.** OCI Audit
+    log retention is **fixed at 365 days and cannot be changed** — a
+    tenancy-level setting applying uniformly across all regions and
+    compartments. The Quizlet-derived `[[practice-1-updated]]` Q21
+    best-guess ("90–365 days, configurable") was **incorrect**; verified
+    directly against Oracle's live "Audit Log Retention Period" doc page
+    (`docs.oracle.com/en-us/iaas/Content/Audit/Tasks/settingretentionperiod.htm`),
+    which states plainly: "Audit logs are retained for 365 days... The
+    retention period cannot be changed." Confirmed further by checking
+    the live Console directly — no retention-configuration control
+    exists anywhere in the Audit Events page, consistent with it being a
+    fixed, non-configurable value. **Also worth noting**: the Console
+    banner during this check showed **"Audit will be deprecated in
+    December 2025 within the OCI Console"** — CLI/SDK/API access for all
+    Audit features continues with no interruption, but the Console UI
+    surface itself is being phased out; worth watching for exam
+    relevance since this is new information not previously in these
+    notes. Already correctly documented (365 days, fixed,
+    tenancy-level) in [[8. Management and Governance — OCI Resource
+    Manager, OS Management Hub, Observability]]'s "Audit Logs —
+    retention, structure, and IAM policy scope" section — that note was
+    right all along; only the separate Quizlet-bank guess needed
+    correcting.
 11. **Virtual Private Vault selection criteria — exact two triggers.**
     `[[practice-1-updated]]` Q35 (medium confidence: more key versions than
     a shared vault's limit, and greater isolation) partially overlaps with
