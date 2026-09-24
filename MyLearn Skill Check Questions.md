@@ -412,3 +412,74 @@ D. Secure access from allowed IP and VCNs only
 One question (Q1) had a **confirmed, uncorrected miss**: selected "Compute model and shape" instead of "Network access type" as one of the three core provisioning inputs, even after a first correction attempt. Three other questions (Q2, Q4, Q5) each involved at least one fabricated-but-plausible distractor mixed among real OCI concepts — see the "Recurring exam pattern" note at the top of this file and [[OCI Architect Professional Tips]] for the consolidated study strategy against this. This is a real, substantial improvement from the prior attempt's "Highest score: 40%." Added to the certification plan's "Top 10 items to review" list: the exact three Autonomous Database provisioning inputs (deployment type, network access type, workload type — NOT compute model/shape), and a reminder to re-verify Note 6's provisioning section framing against this platform feedback.
 
 ---
+
+## Official Prep Workshop Sample Questions (Oracle University, "Prepare for OCI Architect Professional Certification")
+
+*Source: MyLearn course [163275](https://mylearn.oracle.com/ou/course/prepare-for-oracle-cloud-infrastructure-architect-professional-certification/163275/273240), Part 2 transcript. Presented by instructor Samvit Mishra (Senior Manager, Oracle University), explicitly framed as **sample questions emulating the test format** — not real exam questions — used to teach the keyword-identification and elimination strategy. One question per exam domain. Distinct from the skill-check questions above (those are per-module MyLearn skill checks with your own answer attempts; these are Oracle's own worked examples with the instructor's reasoning, no attempt/miss data since you didn't answer them live).*
+
+### Q1 — Architect High Availability and Disaster Recovery Solutions
+Your organization runs a critical e-commerce application in an OCI region. Due to an unexpected natural disaster affecting the primary region, you need to quickly switch operations to a disaster recovery region with minimal downtime. Which OCI Full Stack Disaster Recovery feature helps achieve this?
+
+A. Manual reconfiguration of DNS and resource settings
+B. Manually creating snapshots of individual resources
+C. Writing custom scripts for disaster recovery workflows
+D. Automated failover of the complete application stack to the DR region
+
+**Answer: D**
+
+*Instructor's reasoning: the scenario's keyword is "minimal downtime." Options A–C all describe manual effort (reconfiguration, snapshots, custom scripts), which directly contradicts minimal downtime. Full Stack DR's actual value proposition is automating disaster recovery across the entire application stack — the keyword in D ("automated failover of the complete application stack") is the direct match.*
+
+### Q2 — Architect Cloud-Native Solutions
+As a cloud architect, you are designing a secure solution for managing and deploying containerized applications on OCI. Your development team needs to push and pull container images using Docker CLI with OCI Container Registry. Which authentication method should be used to securely access the private OCI Container Registry?
+
+A. Configure a master encryption key in OCI Vault
+B. Set up an SSH key pair
+C. Generate and use an auth token
+D. Use a JSON Web Token
+
+**Answer: C**
+
+*Instructor's reasoning: OCIR uses auth tokens for secure authentication when accessing private repositories through Docker CLI — generated from the user's OCI profile, used alongside the username during `docker login`. This provides secure, token-based authentication without exposing the OCI account password. Cross-reference: matches the real OCIR auth-token mechanism already documented in [[12. Containers — OCI OKE, Container Instances, OCIR]].*
+
+### Q3 — Architect Security Solutions
+You are designing a secure access solution for compute instances located in a private subnet. According to your organization's security requirements, these compute instances must not have direct access to the internet, and administrative access must be tightly controlled. Which statement correctly explains the purpose of OCI Bastion in this scenario?
+
+A. It provides a public endpoint directly on the compute instance for remote administration.
+B. It offers a secure, controlled public entry point for accessing resources located in a private subnet.
+C. It functions as a firewall that blocks all external traffic to the private compute instances.
+D. It acts as an additional authentication service that validates user credentials before instance access is granted.
+
+**Answer: B**
+
+*Instructor's reasoning: eliminate A ("public endpoint" directly on the instance defeats the "no direct internet access" requirement), C (Bastion isn't a firewall), and D (it isn't a credential-validation/auth service). OCI Bastion's real mechanism: secure access to private-subnet compute instances — without those instances needing public IPs or direct internet exposure — via a managed, controlled access mechanism (SSH port forwarding or session-based access) through a secure entry point.*
+
+### Q4 — Architecting, Implementing, and Operating Databases in OCI
+Your organization is evaluating Oracle Database Autonomous Recovery Service as part of its disaster recovery and backup strategy for Oracle databases. Which underlying technology is Oracle Database Autonomous Recovery Service built upon?
+
+A. Oracle Data Guard
+B. Oracle Recovery Manager (RMAN)
+C. Oracle Zero Data Loss Recovery Appliance
+D. Oracle GoldenGate
+
+**Answer: C**
+
+*Instructor's reasoning: a direct fact rather than an elimination exercise — Autonomous Recovery Service (ARS) is built on **Zero Data Loss Recovery Appliance** technology, delivering automated cloud-based backup/recovery designed for highly efficient backups, rapid recovery, and near-zero data loss protection. **Don't confuse this ARS (the general Oracle Database backup service covering Base DB, Exadata Database Service, Autonomous Database Dedicated, and multicloud) with Zero Data Loss Autonomous Recovery Service (ZRCV)** — the Autonomous-Database-specific, extra-cost, sub-second-RPO tier documented separately in [[6. Databases — OCI Database, NoSQL, Caching, DR]]. Same underlying ZDLRA technology lineage, but ARS and ZRCV are two distinct named services.*
+
+### Q5 — Implementing Observability Solutions
+Your organization uses OCI Connector Hub to move logs from OCI Logging to OCI Object Storage. To reduce storage consumption and keep only relevant data, you want to transfer only logs that contain error-level events. Which OCI Connector Hub feature should you configure to accomplish this requirement?
+
+A. Agent configuration
+B. Log filter task
+C. Tags
+D. IAM policies
+
+**Answer: B**
+
+*Instructor's reasoning: a **log filter task** in Connector Hub filters/processes logs before they're transferred to the target service (here, Object Storage) — configuring one ensures only error-level logs are forwarded, reducing storage and improving the relevance of what's retained. The other three options don't operate on log content/severity at all: agent configuration governs collection agents, tags are metadata/organization, and IAM policies control access — none of them filter by log level.*
+
+## Test-taking strategy demonstrated across all five (see [[OCI Architect Professional Tips]] Section 1 for the full write-up)
+- Identify the scenario's **keyword(s)** first — each question above hinges on one or two words ("minimal downtime," "private," "error-level events") that immediately eliminate options not addressing that specific constraint.
+- **Process of elimination** beats trying to recall the "right" answer directly — three of the five worked examples (Q1, Q2, Q3) are explicitly solved by ruling out wrong options rather than recognizing the correct one on sight.
+- Watch for options that **sound plausible but describe manual/partial mechanisms** when the scenario asks for something automated/complete (Q1's A–C), or that invoke a real OCI concept in the wrong role (Q3's firewall/auth-service mischaracterizations of Bastion) — the same fabricated-plausible-distractor pattern already flagged at the top of this file for the skill-check questions.
+
+---

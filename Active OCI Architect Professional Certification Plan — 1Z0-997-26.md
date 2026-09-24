@@ -6,7 +6,7 @@
 **Exam:** OCI Architect Professional (1Z0-997-26). Register through [MyLearn’s current exam page](https://mylearn.oracle.com/ou/exam/oracle-cloud-infrastructure-architect-professional-1z0-997-26/163295/161770/271322).  
 **Target exam date:** Not set. Use this as a four-week plan once you choose a date; schedule the official practice exam at the end of Week 3 before committing to the real exam.
 
-**Exam logistics (as last checked; reverify on MyLearn before booking per the correction below):** 90 minutes, 50 questions, 68% passing score, $245. Certification validity: 24 months from earn date.
+**Exam logistics — confirmed directly from Oracle's own official prep workshop video** (MyLearn course 163275, "Prepare for OCI Architect Professional Certification," Samvit Mishra/Oracle University): **multiple-choice format**, 90 minutes, 50 questions, 68% passing score, no negative marking. Still reverify price ($245 as last checked) and registration/delivery rules on MyLearn's registration page before booking, since the workshop didn't restate those. Certification validity: 24 months from earn date. See [[OCI Architect Professional Tips]] Section 1 for the full test-taking-strategy notes and Section 6 for the confirmed domain weights.
 
 **Given your OCI Director/internal-employee role:** check whether Oracle internal employee training or exam-voucher benefits apply before paying the $245 out of pocket.
 
@@ -27,14 +27,15 @@ Treat this as an **online, scenario-based certification exam**, not a Hands-on P
 
 Hands-on work is still essential, but it is preparation for architectural judgment: explain the trade-off, then build a small proof of the design. Do not use exam dumps or leaked question banks.
 
-## Exam domains (per Oracle's published blueprint — reverify against the current MyLearn objectives page, per the correction above)
-1. Cloud-native architecture design (OKE, Functions, API Gateway, Resource Manager/Terraform)
-2. High availability and disaster recovery
-3. Security architecture
-4. Database architecture (including Oracle-specific: Data Guard, Autonomous Database, Exadata)
-5. Multicloud and hybrid architecture
-6. Workload migration
-7. Observability and management
+## Exam domains — confirmed weights from Oracle's official prep workshop
+Source: MyLearn course 163275, "Prepare for OCI Architect Professional Certification" — stated directly by the Oracle University instructor as the exam's own objective weighting (see [[OCI Architect Professional Tips]] Section 6 for full detail and per-domain named concepts).
+1. Architect High Availability and Disaster Recovery Solutions — **15%**
+2. Architect Cloud-Native Solutions — **20%**
+3. Architect Security Solutions — **25%** (largest single domain)
+4. Architecting, Implementing, and Operating Databases in OCI — **20%**
+5. Implementing Observability Solutions — **20%**
+
+Note: this 5-domain structure (with Security as its own 25% domain) supersedes the earlier 7-item placeholder list that had separate Multicloud/Migration domains — those topics don't appear as named top-level domains in the confirmed weighting.
 
 Tenant sign in - 
 1. **rocwyvpy14**

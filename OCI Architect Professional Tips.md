@@ -9,7 +9,15 @@ Unlike your AWS tips file, this isn't a refresh of old notes — it's a first pa
 ---
 
 ## 1. The format is the biggest trap, not the content
-This is a **Hands-on Performance Exam (HPE)**: real lab tasks in a live OCI environment, scored per sub-task with partial credit, blended with multiple-choice. If a scenario asks for 9 configuration steps and you complete 7, you get credit for 7 — so **don't skip a hard sub-task to save time**, since partial credit rewards attempting everything over polishing fewer things. This is fundamentally different from AWS's all-or-nothing MCQ scoring and changes your exam-day time strategy: triage by "what can I at least partially complete" rather than "what am I most confident about."
+**Correction, confirmed directly from Oracle University's own "Prepare for OCI Architect Professional Certification" workshop video (Samvit Mishra, Senior Manager, Oracle University) — supersedes the HPE claim below.** The exam is **multiple-choice only**: 90 minutes, 50 questions, 68% passing score. **No negative marking** — always answer, even a guess, rather than leaving a question blank. This is *not* a Hands-on Performance Exam with live lab tasks — that description (kept below struck through for history) does not match the 2026 exam as Oracle itself describes it in the official prep workshop.
+
+~~This is a Hands-on Performance Exam (HPE): real lab tasks in a live OCI environment, scored per sub-task with partial credit, blended with multiple-choice. If a scenario asks for 9 configuration steps and you complete 7, you get credit for 7 — so don't skip a hard sub-task to save time, since partial credit rewards attempting everything over polishing fewer things.~~
+
+**Test-taking strategy, straight from the workshop:**
+- Read the question carefully and identify the **keywords/themes** first (the workshop's own worked examples hinge entirely on spotting a single keyword — e.g. "automated failover" vs. "manual reconfiguration," or "minimal downtime").
+- Use **process of elimination** — read every option, discard obvious distractors first, especially when two options sound deceptively similar.
+- **Mark for review and move on** if a question is taking too long — 90 minutes for 50 questions doesn't allow getting stuck. Return to marked questions after finishing the rest.
+- **Always answer, even an intelligent guess** — no negative marking means a blank answer is strictly worse than any guess.
 
 ## 2. Where your AWS instincts will mislead you
 - **Licensing is tested, and AWS has no equivalent.** BYOL vs. included licensing, RAC, Exadata — these show up in architecture decisions as real cost/compliance constraints, not just trivia. AWS certs never make you reason about vendor licensing this way.
@@ -161,6 +169,53 @@ up.
 ---
 
 ## Open items to fill in as you go
-- [ ] Exact current domain weightings (Oracle's public blueprint page, verify directly — not yet confirmed at time of writing)
+- [x] Exact current domain weightings — confirmed directly from the official prep workshop video (see new section below).
 - [ ] Whether your OCI employee status gives voucher/discount access to the $245 fee or paid Professional course content
 - [ ] Post-practice-assessment: which domains are actually your weak spots (can't front-load this one, unlike AWS)
+
+---
+
+## 6. Official exam domain weights (confirmed verbatim from Oracle's own prep workshop)
+
+Source: MyLearn course "Prepare for Oracle Cloud Infrastructure Architect Professional Certification" ([course 163275](https://mylearn.oracle.com/ou/course/prepare-for-oracle-cloud-infrastructure-architect-professional-certification/163275/273240)), Parts 1 and 2 — an Oracle University-produced exam-prep workshop, not third-party speculation. Stated explicitly by the instructor as the exam's own objective weighting.
+
+| Domain | Weight |
+| --- | --- |
+| Architect High Availability and Disaster Recovery Solutions | 15% |
+| Architect Cloud-Native Solutions | 20% |
+| Architect Security Solutions | 25% |
+| Architecting, Implementing, and Operating Databases in OCI | 20% |
+| Implementing Observability Solutions | 20% |
+
+**Security is the single largest domain at 25%** — heavier than any other individual domain, including Databases. Worth weighting study time accordingly rather than assuming an even split across the five domains.
+
+**Per-domain concepts named explicitly in the workshop** (a real, if partial, syllabus signal — not the full blueprint, but confirms what Oracle itself chose to spotlight):
+- **HA/DR**: designing scalable/resilient/HA OCI architectures; **Full Stack Disaster Recovery** service specifically named.
+- **Cloud-Native**: microservice architecture, containerization, DevOps practices with **OKE, Container Instances, OCI DevOps**; container image management/orchestration via **OCIR + OKE**; infrastructure-as-code via **OCI Functions and Resource Manager**.
+- **Security**: designing/implementing secure OCI architectures; **OCI Bastion, Zero Trust Packet Routing, OCI Network Firewall**; app/data security via **WAF, OCI Certificates, Key Management Service**; governance/tenancy management via **OCI Organizations Management**.
+- **Databases**: scalable/HA database design via **Base Database Service and Autonomous Database**; automated backup/recovery/business continuity via **Autonomous Recovery Service**; globally distributed low-latency design via **Globally Distributed Autonomous Database**; app scalability/responsiveness via **OCI Cache**.
+- **Observability**: monitoring, logging, alerting, **Connector Hub**, **OCI Search**.
+
+## 7. Worked sample questions from the official prep workshop — the exact reasoning pattern to copy
+
+Oracle's own instructor explicitly frames these as **not real exam questions**, just pattern-matched emulations meant to teach the keyword/elimination approach documented in Section 1 above. Five questions, one per domain — captured with the instructor's own reasoning chain since *how* he eliminates options is the actual teaching content, not just the final answer.
+
+1. **HA/DR** — Scenario: natural disaster hits the primary region, need to switch operations to a DR region with **minimal downtime**. Which Full Stack DR feature achieves this?
+   Options: (A) manual reconfiguration of DNS/resource settings, (B) manually creating snapshots of individual resources, (C) writing custom DR scripts, (D) automated failover of the complete application stack.
+   **Answer: D.** Reasoning: the question's keyword is "minimal downtime" — options A–C all describe *manual* effort, which contradicts minimal downtime. FSR's actual value proposition is automating failover across the entire stack, not partial/manual mechanisms.
+
+2. **Cloud-Native** — Scenario: dev team needs to push/pull container images via Docker CLI against a **private OCI Container Registry (OCIR)**. Which authentication method?
+   Options: (A) master encryption key in OCI Vault, (B) SSH key pair, (C) generate and use an auth token, (D) JSON Web Token.
+   **Answer: C.** Reasoning: OCIR authenticates Docker CLI access specifically via an **auth token** generated from the user's OCI profile, used alongside the username at `docker login` — a token-based method that avoids exposing the account password.
+
+3. **Security** — Scenario: compute instances in a **private subnet** must have no direct internet access, with tightly controlled admin access. Which statement correctly explains **OCI Bastion's** purpose here?
+   Options: (A) provides a public endpoint directly on the compute instance, (B) offers a secure controlled public entry point for accessing private-subnet resources, (C) functions as a firewall blocking all external traffic, (D) acts as an additional credential-validation auth service.
+   **Answer: B.** Reasoning: eliminate A (Bastion doesn't put a public endpoint *on* the instance — that defeats the "no direct internet access" requirement), C (Bastion isn't a firewall), and D (it isn't a credential-validation layer). Bastion's actual mechanism is a managed, controlled entry point (SSH port forwarding/session-based access) to reach private-subnet instances without giving them public IPs.
+
+4. **Databases** — Scenario: evaluating **Oracle Database Autonomous Recovery Service** for DR/backup strategy. Which underlying technology is ARS built on?
+   Options: (A) Oracle Data Guard, (B) Oracle RMAN, (C) Oracle Zero Data Loss Recovery Appliance, (D) Oracle GoldenGate.
+   **Answer: C.** A direct fact, not an elimination exercise: ARS is built on **Zero Data Loss Recovery Appliance** technology, delivering efficient backups, rapid recovery, and near-zero data loss for Oracle databases. Cross-reference: this is the **on-premises/general Oracle Database** service; don't confuse with **Zero Data Loss Autonomous Recovery Service (ZRCV)**, the Autonomous-Database-specific sub-second-RPO tier documented in [[6. Databases — OCI Database, NoSQL, Caching, DR]].
+
+5. **Observability** — Scenario: using **OCI Connector Hub** to move logs from OCI Logging to Object Storage, but want to transfer **only error-level logs** to reduce storage. Which Connector Hub feature?
+   Options: (A) agent configuration, (B) log filter task, (C) tags, (D) IAM policies.
+   **Answer: B.** Reasoning: a **log filter task** is the Connector Hub mechanism that filters/processes logs *before* they reach the target service — the only one of the four options that actually operates on log content/severity rather than agent setup, resource labeling, or access control.
