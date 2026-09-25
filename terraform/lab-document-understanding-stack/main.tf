@@ -31,6 +31,9 @@ resource "oci_objectstorage_bucket" "input_bucket" {
   namespace      = data.oci_objectstorage_namespace.ns.namespace
   name           = "lab-docs-input"
   access_type    = "NoPublicAccess"
+  # Without this the bucket emits no object events, so the Events rule below
+  # never fires (found while building lab-capstone-enrich-stack).
+  object_events_enabled = true
 }
 
 resource "oci_objectstorage_bucket" "output_bucket" {
@@ -100,5 +103,8 @@ resource "oci_identity_policy" "docs_func_policy" {
     "Allow dynamic-group ${oci_identity_dynamic_group.docs_func_dyn_grp.name} to manage objects in compartment id ${var.compartment_ocid} where target.bucket.name = '${oci_objectstorage_bucket.input_bucket.name}'",
     "Allow dynamic-group ${oci_identity_dynamic_group.docs_func_dyn_grp.name} to manage objects in compartment id ${var.compartment_ocid} where target.bucket.name = '${oci_objectstorage_bucket.output_bucket.name}'",
     "Allow dynamic-group ${oci_identity_dynamic_group.docs_func_dyn_grp.name} to manage ai-service-document-family in compartment id ${var.compartment_ocid}",
+    # The Events service needs this to invoke the function; without it the
+    # rule matches but the invocation is refused.
+    "Allow service cloudEvents to use functions-family in compartment id ${var.compartment_ocid}",
   ]
 }
