@@ -440,9 +440,12 @@ resource "oci_identity_policy" "mymagnet_policy" {
   provider       = oci.home
   compartment_id = var.compartment_ocid
   name           = "mymagnet-backup-policy"
-  description    = "Allow both MyMagnet instances to read/write the shared backup bucket via instance principal"
+  description    = "MyMagnet instances: backup bucket access and Run Command"
 
   statements = [
     "Allow dynamic-group ${oci_identity_dynamic_group.mymagnet_dyn_grp.name} to manage objects in compartment id ${var.compartment_ocid} where target.bucket.name = '${oci_objectstorage_bucket.backups.name}'",
+    # Run Command: without this the agent can't fetch commands, so they sit
+    # at ACCEPTED forever. Each instance can only fetch its own commands.
+    "Allow dynamic-group ${oci_identity_dynamic_group.mymagnet_dyn_grp.name} to use instance-agent-command-execution-family in compartment id ${var.compartment_ocid} where request.instance.id = target.instance.id",
   ]
 }
