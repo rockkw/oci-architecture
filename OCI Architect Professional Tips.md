@@ -161,6 +161,21 @@ up.
 
 *Source detail for each row lives in the corresponding numbered Note file ([[6. Databases — OCI Database, NoSQL, Caching, DR]] for DB rows, [[5. Security — OCI IAM, WAF, Certificates, Vault, Cloud Guard]] for IAM/Vault/Network Firewall rows, [[3. Compute — OCI Compute, Instance Pools, Load Balancers, Volumes]] for Compute rows, [[1. DevOps — OCI DevOps, CI-CD, Observability]] for DevOps/Observability rows, [[4. Storage — OCI Object, Archive, File, Block Storage]] for Storage rows, [[9. Networking — OCI VCN, DRG, Gateways, Load Balancers]] for Networking rows, [[7. Multicloud and Hybrid — Oracle Database@Azure, FastConnect, DRG]] for Multicloud/Hybrid rows, [[8. Management and Governance — OCI Resource Manager, OS Management Hub, Observability]] for Governance/Organization Management rows, [[12. Containers — OCI OKE, Container Instances, OCIR]] for Containers/OKE rows). Add rows here as new finite lists turn up in other domains (Migration, Serverless, etc.) — this table is meant to keep growing across the whole exam, not stay Databases-only.*
 
+## 4a. Swapped-noun and "auto" traps seen in practice exam attempt 2
+
+The wrong option usually reads correctly except for **one swapped service or
+field name**, or an invented **"auto"** step. Before choosing, ask *where does
+this actually run / what does this field actually do?*
+
+| Trap option | Swapped for | Question |
+|---|---|---|
+| "…deployed only to **OKE**" | OCI Functions runs in a Functions application | Events + Functions demo |
+| **Resolution** | **Interval** is the aggregation window | Monitoring query |
+| Block volume **replication across ADs** | **Continuous redo** to Recovery Service | Near-zero data loss |
+| Kubernetes **docker-registry secret** | **Auth token** for `docker login` | OCIR push/pull |
+| "Vault **auto-encrypt… auto-decrypted** config variable" | Encrypt with Vault, **decrypt in function code** | Functions DB password (**missed in both attempts**) |
+| Point-in-time **restore** of production | **Clone** from a pre-corruption backup | Keep corrupted state for investigation |
+
 ## 5. Study approach adjustments vs. your AWS process
 - Question banks (WhizLabs-equivalent for OCI) are useful for the MCQ portion only — don't mistake a high practice-test score for lab readiness.
 - Build everything in Week 1-3 of the plan in an actual tenancy at least once without following a tutorial verbatim, close to exam conditions, before your final week.

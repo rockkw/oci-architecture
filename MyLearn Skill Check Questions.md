@@ -710,3 +710,74 @@ C. U1 will be routed to backend set B, U2 will be routed to backend set C.
 D. U1 and U2 will be routed to backend set B.
 
 **Your answer: A — INCORRECT. Correct: D.** Order of evaluation: pick the listener by **virtual hostname** (Host header), then apply that listener's path route set, then fall back to the listener's default. U1 → captive.com listener; `/` matches no path rule → its default **B** (not A: the no-hostname listener only takes hosts that match no hostname). U2 → wild.com listener; exact `/tame/` → **B**, overriding its default C. **Added a "How a request picks a backend set" subsection with this worked example to [[9. Networking — OCI VCN, DRG, Gateways, Load Balancers]].**
+
+### Q12 — Databases / patching in Autonomous AI Database Serverless
+How is patching managed in Oracle Autonomous AI Database Serverless?
+
+A. Customers are responsible for manually applying quarterly database patches.
+B. Rolling patching is not supported for Autonomous Database Serverless.
+C. Autonomous Database Serverless supports only manual version upgrades.
+D. Oracle automatically manages infrastructure and database patching operations.
+
+**Your answer: D — CORRECT.** On Serverless, Oracle patches infrastructure and database automatically, rolling, with no customer action (you can only pick the patch level, Regular or Early, at provisioning). A and C describe customer-managed services (Base Database), and B is false: patching is applied in a rolling fashion so the database stays available. Live tie-in: the capstone's ADB reports release 23.26.3.3, which Oracle keeps current on its own. See [[6. Databases — OCI Database, NoSQL, Caching, DR]].
+
+### Q13 — Serverless / most cost-effective thumbnail pipeline (10 files/hour)
+You want to automate the processing of new image files to generate thumbnails. The expected rate is 10 new files every hour. Which is the most cost-effective option in OCI?
+
+A. Upload all files to an OCI Streaming stream; a cron job invokes a function to fetch from the stream; another function processes the images; store thumbnails in another stream.
+B. Build a web application that saves files to NoSQL; Events triggers a Notifications message that invokes a custom application to make thumbnails; store thumbnails in a NoSQL table.
+C. Upload files to an Object Storage bucket. Each upload emits an event; a rule filters these events and triggers a function in Oracle Functions, which processes the image and stores the thumbnail back in an Object Storage bucket.
+D. Upload files to an Object Storage bucket; each upload triggers an event that provisions a compute instance with cloud-init to process the file, then terminates it with an Autoscaling policy.
+
+**Your answer: C — CORRECT.** At 10 files an hour, pay-per-invocation Functions driven by Object Storage events costs almost nothing (well inside the free tier), with nothing idle in between. A adds a stream plus polling, B a web app and a NoSQL store for binary images, and D boots a whole instance per file (and Autoscaling doesn't terminate one-off instances that way). This is exactly the design of the capstone's `lab-capstone-enrich-stack` (priced at $0 in CAPSTONE.md's cost table). See [[14. Serverless — OCI Functions, Events, API Gateway]].
+
+### Q14 — Storage / shared, multi-AD, low-latency file storage with quick rollback
+A big-data platform in US East (Ashburn) needs storage with high throughput and low-latency file operations, concurrent access from compute instances in multiple Availability Domains, and quick restore of a previous version before major updates. Most cost-effective option?
+
+A. Object Storage bucket with versioning, shared over NFS through Storage Gateway on a compute instance.
+B. FastConnect to on-premises and mount the shared on-premises NFS.
+C. Create a File Storage file system and mount target, mount it on all the instances, and take snapshots before each update.
+D. Create a block volume attached read/write shareable to all the instances, and back it up before each update.
+
+**Your answer: C — CORRECT.** File Storage is managed NFS that instances in **any AD of the region** can mount concurrently, and its snapshots are instant, space-efficient restore points. D fails the multi-AD requirement: a block volume (even a shareable read/write attachment) can only attach to instances **in its own AD**, and it needs a cluster-aware file system. A adds an extra instance and Object Storage latency (not low-latency file I/O); B adds FastConnect and on-prem dependency. See [[4. Storage — OCI Object, Archive, File, Block Storage]].
+
+### Q15 — Databases / ATP-S slow at peak: which two options are expensive or impractical (choose TWO)
+A mobile ordering app uses ATP-S (3 CPU cores, 1 TB memory) with an APEX front end; response time is very slow at peak. Which two options are **expensive or impractical** ways to improve response times?
+
+A. Identify the maximum memory capacity needed for peak times and scale the memory to that number; ATP-S will scale the memory down when not needed.
+B. Enable auto scaling for CPU cores on the ATP-S database.
+C. Scale up CPU core count and memory during peak times.
+D. Use the Machine Learning (ML) feature of the ATP-S database iteratively to tune the SQL queries used by the application.
+E. Identify the maximum CPU capacity needed for peak times and scale the CPU core count to that number; ATP-S will scale the CPU core count down when not needed.
+
+**Your answer: B, C — PARTLY CORRECT (C right, B wrong). Answer per the source key in [[practice-1-updated]] (Q63): C, E.** The question is inverted: pick what *not* to do. **Auto scaling (B) is the recommended, practical fix**: it bursts up to 3× the base cores at peak and back down automatically, billing only for what's used. C is impractical (manual scaling at every peak), and E is expensive (provisioning for peak all the time; ATP-S doesn't scale a manually set count back down). A is also dubious, since ADB memory isn't scaled independently of compute, but the source key doesn't select it. Same question appeared in the earlier practice set, where the key was taken from the PDF source rather than Oracle's docs. See [[6. Databases — OCI Database, NoSQL, Caching, DR]].
+
+### Q16 — Serverless / Events + Functions demo: two required actions (choose TWO)
+You are building a demo showcasing the OCI Events service and Oracle Functions: an event every time an image is uploaded to an Object Storage bucket, and a function listening to that event that does face recognition. Choose the two actions required to run the demo successfully.
+
+A. The function must be deployed only to Oracle Kubernetes Engine (OKE).
+B. You must deploy the function that does facial recognition for the demo to work.
+C. Creating an event rule is not permitted for OCI Object Storage.
+D. You have to enable Object Storage buckets to emit events for state changes.
+
+**Your answer: A, D — PARTLY CORRECT (D right, A wrong). Correct: B, D.** OCI Functions is its own managed (Fn Project-based) service; functions run in a Functions application, not on your OKE cluster, so A is false. The function must actually be deployed (B), and the bucket must have **Emit Object Events** enabled (D), which is off by default. C is false: Object Storage is a standard event source. The same question in [[practice-1-updated]] carries a source key that marks C correct; that key is wrong on Oracle's docs, and the capstone proved D live (`object_events_enabled = true` in `lab-capstone-enrich-stack`, and the missing setting found in `lab-document-understanding-stack`). See [[14. Serverless — OCI Functions, Events, API Gateway]].
+
+### Q17 — Cloud-Native / what is a microservice (repeat of attempt 1 Q9)
+A company is experiencing performance issues with its monolithic architecture for an e-commerce website. In the context of software architecture, what is a microservice?
+
+A. A cloud-based service for testing and deploying microcode
+B. A software framework for automating user interface testing
+C. A style of design for enterprise systems based on a loosely coupled component architecture
+D. A small program that represents discrete logic that executes within a well-defined boundary on dedicated hardware
+
+**Your answer: D — CORRECT per the attempt 1 analysis** (improved; attempt 1 picked the "style of design" option). The question asks what **a** microservice is, the individual unit, not microservices **architecture** (C, the loosely coupled design style). A and B are unrelated distractors. Not verified against an in-app answer key.
+
+### Q18 — Serverless / Vault + Oracle Functions DB password (repeat of attempt 1 Q3, **missed again**)
+Serverless applications on Oracle Functions store state in a database that needs credentials; security standards mandate encrypting secrets such as database passwords. Which approach should the team follow?
+
+A. Use the OCI Vault service to auto-encrypt the password, then set an application-level configuration variable to reference the auto-decrypted password inside your function container.
+B. Leverage application-level configuration variables to store passwords because they are automatically encrypted by Oracle Functions.
+C. Encrypt the password using the OCI Vault service, then decrypt this password in your function code with the generated key.
+D. Use the OCI Console to enter the password in the function configuration section in the provided input field.
+
+**Your answer: A — INCORRECT (same wrong answer as attempt 1). Correct: C.** There is no "auto-decrypt" into a config variable. Documented flow: encrypt the password with a Vault key, store the **ciphertext** as a config variable, and the **function code** calls the Vault/KMS decrypt API at runtime. B is false (config variables aren't auto-encrypted); D puts plaintext in config. The word "auto" in A is the trap. See [[14. Serverless — OCI Functions, Events, API Gateway]]; added to the repeat-miss list in [[OCI Architect Professional Tips]].
