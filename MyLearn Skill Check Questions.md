@@ -595,3 +595,77 @@ D. Create a NAT Gateway and add the following route rule to the route table of a
 **Your answer: A, D — Confirmed CORRECT**, verified against Oracle's own guidance: Autonomous Database (with a public endpoint) is one of the specific OCI services reachable through **either** NAT Gateway or Service Gateway when both exist in a VCN — and when both are available, the **more specific route wins, which is the NAT Gateway**. So the real fix is (1) a NAT Gateway with a `0.0.0.0/0` route in the private subnet's route table, plus (2) a stateful egress security-list rule permitting that outbound traffic — exactly D and A. B (remote VCN peering) is wrong because ADB isn't sitting in a peer VCN you control; C (adding an Internet Gateway to a **private** subnet) directly contradicts the subnet's own private status and isn't how private subnets reach public endpoints. **This is a real exception to the "prefer Service Gateway for Oracle services" general rule already in this repo — added the exception, with the NAT-Gateway-IP-as-connection-source caveat, to [[9. Networking — OCI VCN, DRG, Gateways, Load Balancers]]'s "NAT and service-gateway traps" subsection.**
 
 ---
+
+## Practice Exam 997-26, attempt 2 (MyLearn, 50 questions, timed, 2026-09-25)
+
+*Same exam as above, retaken. Option order is shuffled between attempts, so letters here refer to this attempt. Where a question repeats from attempt 1, the entry links back to it.*
+
+### Q1 — Networking / subnet deletion blocked by a VNIC (repeat of attempt 1 Q6)
+You are part of a project team working in the development environment created in OCI. You realize that the CIDR block specified for one of the subnets in a VCN is not correct and want to delete the subnet. While deleting you get an error indicating that there are still resources that you must delete first. The error includes the OCID of the VNIC that is in the subnet. Which action should be taken to troubleshoot this issue?
+
+A. Copy and paste the OCID of the VNIC in the search box of the OCI Console to find out the parent resource of the VNIC.
+B. Use OCI CLI to delete the VNIC first and then delete the subnet.
+C. Use OCI CLI to delete the subnet using the `--force` option.
+D. Use OCI CLI to call the "network vnic" and "compute vnic-attachment" operations to find out the parent resource of the VNIC.
+
+**Your answer: D — likely CORRECT** (improved from attempt 1, where you chose the Console-search option). Same reasoning as attempt 1 Q6: Oracle's VCN troubleshooting doc uses the CLI, `oci network vnic get --vnic-id <VNIC_OCID>`, whose `display-name` names the owning resource, and `oci compute vnic-attachment list` for instance VNICs. A service-owned VNIC can't be deleted on its own (B), and `--force` (C) doesn't clear dependent resources. See [[9. Networking — OCI VCN, DRG, Gateways, Load Balancers]] ("Troubleshooting: subnet/VCN deletion blocked by an attached VNIC") and [[CLI Command Reference - OCI Architect Pro Study]].
+
+### Q2 — Security / OCI Certificates automation (repeat of attempt 1 Q5)
+OracleRetail Inc. is an online marketplace that wants to enhance the security of its customer transactions by ensuring encrypted connections using TLS on OCI. To prevent service disruptions due to expired certificates, they decide to implement OCI Certificates service for automated certificate provisioning and renewal. What is a key advantage of automating TLS certificate management in OCI?
+
+A. Increases the speed of data transmission by optimizing encryption protocols
+B. Ensures that applications do not require regular security updates
+C. Eliminates the need for access control and authentication mechanisms
+D. Minimizes the risk of manual errors during certificate issuance and renewal
+
+**Your answer: D — CORRECT** (same as attempt 1). The other three make false absolute claims: automation doesn't change protocol speed, remove the need for app security updates, or replace access control. Related hands-on: the capstone's own OCI Certificates CA failure (a CA needs its own dynamic group to use its Vault key); see [[5. Security — OCI IAM, WAF, Certificates, Vault, Cloud Guard]].
+
+### Q3 — Security / Vault secret version rollback
+In OCI Secret Management within a Vault, you have created a secret and rotated the secret one time. The current version state shows: version 2 (latest) is Current, version 1 is Previous. In order to roll back to version 1, what should the administrator do?
+
+A. From the version 2 (latest) menu, select "Rollback..." and select version 1 when given the option.
+B. Create a new secret version 3 and set to Pending. Copy the contents of Version 1 into version 3.
+C. Deprecate version 2 (latest). Create new Secret Version 3. Create soft link from version 3 to version 1.
+D. From the version 1 menu, select "Promote to Current."
+
+**Your answer: D — CORRECT.** A `PREVIOUS` secret version can simply be promoted back to current (Console "Promote to Current" on that version; CLI `oci vault secret update --current-version-number 1`). A invents a "Rollback…" action that doesn't exist; B works in effect but is needless extra work, and "copy contents" isn't how rollback is designed; C invents soft links between versions. **Added the rollback mechanism to [[5. Security — OCI IAM, WAF, Certificates, Vault, Cloud Guard]]'s secret-lifecycle bullets.**
+
+### Q4 — Databases / Autonomous Recovery Service near-zero data loss
+Which feature of Oracle Autonomous Recovery Service (RCV) helps achieve near zero data loss protection?
+
+A. Full database backups performed once every quarter
+B. Continuous archiving of redo logs to Recovery Service
+C. Manual export of backups to Object Storage
+D. Replication of block volumes across Availability Domains
+
+**Your answer: D, then changed to B during the attempt** (the first pick, block volume replication, is the trap; the latest screenshot still showed D selected, so confirm the final submitted answer on the results page). **Correct: B.** Real-time data protection in Recovery Service (the Zero Data Loss tier) works by the protected database **continuously shipping redo** to the service, giving sub-second RPO. Block volume cross-AD replication is a Block Volume feature, not part of Recovery Service, and works at the disk level rather than on database redo. A and C are infrequent/manual and can't give near-zero loss. This was already in [[6. Databases — OCI Database, NoSQL, Caching, DR]] ("Enhanced tier: Zero Data Loss Autonomous Recovery Service"); added an exam-trap line there.
+
+### Q5 — Databases / Autonomous Database logical corruption: restore vs. clone
+A production Autonomous AI Database experiences logical corruption at 10:05 AM. Service must be restored quickly, and the corrupted state must remain available for investigation. Which approach should be used?
+
+A. Perform a point-in-time restore on the production database to 10:04 AM
+B. Restore only from a long-term backup, because standard backups cannot be used
+C. Create a read-only clone from the current corrupted production database
+D. Create a clone from a backup taken before 10:05 AM and leave production unchanged
+
+**Your answer: A — likely INCORRECT. Likely correct: D.** An in-place point-in-time restore (A) brings service back but overwrites the corrupted state, violating the "remain available for investigation" requirement. A clone from a pre-10:05 backup (D) gives a clean database to serve from while the corrupted production database stays intact. C copies the corruption, so it doesn't restore service; B's premise is false (standard automatic backups support point-in-time recovery). **Added a restore-vs-clone line to [[6. Databases — OCI Database, NoSQL, Caching, DR]]'s clone-from-backup notes.**
+
+### Q6 — Observability / Monitoring query: which field is the aggregation window
+When defining a query for metric data in Monitoring, which field provides the time window for aggregating metric data points plotted on the metric chart?
+
+A. Statistic
+B. Interval
+C. Namespace
+D. Dimension
+
+**Your answer: D — INCORRECT. Correct: B (Interval).** In MQL `CpuUtilization[5m]{resourceId = "…"}.mean()`, `[5m]` is the **interval** (aggregation window), `.mean()` is the **statistic** (aggregation function), `{…}` filters on **dimensions**, and the namespace (e.g. `oci_computeagent`) selects the metric's source. The capstone's live alarms use exactly this shape (`CpuUtilization[5m]{resourceId =~ "id1|id2"}.mean() > 80`). Already defined in [[8. Management and Governance — OCI Resource Manager, OS Management Hub, Observability]] ("Interval vs. Resolution"); no new note needed.
+
+### Q7 — Containers / OCIR prerequisite for docker push and pull
+You are a software developer working on a project that requires containerization of your application using Docker. Your company uses OCI Registry to store and manage Docker images. What is the prerequisite step you need to perform before pushing and pulling Docker images to and from OCI Registry using Docker CLI?
+
+A. Master Encryption Key in OCI Vault
+B. SSH key pair
+C. Auth token
+D. Docker registry secret
+
+**Your answer: D — INCORRECT. Correct: C (Auth token).** `docker login <region-key>.ocir.io -u '<namespace>/<username>'` uses an **auth token** as the password (for federated users, `<namespace>/oracleidentitycloudservice/<username>`). A **docker-registry secret** (D) is the Kubernetes object that lets OKE pods pull private images; it is created *from* the auth token, so it's a later step for a different client. A Vault key (A) and SSH keys (B) play no part in registry auth. Live example: the capstone's Phase 3 image push is blocked on exactly this token. See [[12. Containers — OCI OKE, Container Instances, OCIR]].
