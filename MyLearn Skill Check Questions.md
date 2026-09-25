@@ -822,3 +822,13 @@ C. Dedicated with custom policies
 D. Serverless
 
 **Your answer: D — CORRECT.** Autonomous Database has two deployment models, **Serverless** and **Dedicated** (Exadata infrastructure reserved for you, for isolation and control over maintenance and infrastructure). "Doesn't need dedicated infrastructure or infra-level customization" rules out Dedicated; "Hybrid only" isn't an ADB deployment model. Live tie-in: the capstone's database is Serverless (created in about 4½ minutes). See [[6. Databases — OCI Database, NoSQL, Caching, DR]].
+
+### Q23 — Security / OCI Certificates use case verifying both sides
+Which OCI Certificates use case helps secure communication by verifying the identity of both communicating services?
+
+A. Code signing
+B. Internet Gateway encryption
+C. Mutual TLS (mTLS) using private certificates
+D. Public certificate deployment
+
+**Your answer: C — CORRECT.** In **mTLS** both client and server present certificates, typically issued by a **private CA** in OCI Certificates for service-to-service traffic. Plain TLS with a public certificate (D) only proves the server's identity; code signing (A) proves who built software, not who is on a connection; "Internet Gateway encryption" (B) isn't a thing (an IGW is a routing target and encrypts nothing). Live tie-in: the capstone database is reached over one-way TLS, since mTLS/wallets were turned off. See [[5. Security — OCI IAM, WAF, Certificates, Vault, Cloud Guard]].
