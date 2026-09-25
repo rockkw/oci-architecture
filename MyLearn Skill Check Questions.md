@@ -669,3 +669,44 @@ C. Auth token
 D. Docker registry secret
 
 **Your answer: D — INCORRECT. Correct: C (Auth token).** `docker login <region-key>.ocir.io -u '<namespace>/<username>'` uses an **auth token** as the password (for federated users, `<namespace>/oracleidentitycloudservice/<username>`). A **docker-registry secret** (D) is the Kubernetes object that lets OKE pods pull private images; it is created *from* the auth token, so it's a later step for a different client. A Vault key (A) and SSH keys (B) play no part in registry auth. Live example: the capstone's Phase 3 image push is blocked on exactly this token. See [[12. Containers — OCI OKE, Container Instances, OCIR]].
+
+### Q8 — Observability / MQL: which two components are optional (choose TWO)
+Which two components are optional while creating the Monitoring Query Language (MQL) expressions in the OCI Monitoring service?
+
+A. Interval
+B. Grouping Function
+C. Dimensions
+D. Metric
+E. Statistic
+
+**Your answer: A, B — PARTLY CORRECT (B right, A wrong). Correct: B, C.** Full MQL form: `metric[interval]{dimensions}.groupingFunction.statistic`. Metric, interval and statistic are required; dimension filters and the grouping function are optional (the base query `CpuUtilization[5m].max()` has neither). Interval can't be optional because it defines the aggregation window (see Q6). **Added an explicit required/optional line to [[8. Management and Governance — OCI Resource Manager, OS Management Hub, Observability]]'s MQL syntax section.**
+
+### Q9 — Observability / setting the aggregation duration (Interval vs. Resolution)
+You are monitoring the memory utilization of a group of compute instances in OCI Monitoring. You want to define the specific duration of time (for example 5 or 10 minutes) over which the metric data points are aggregated to produce the results. Which component of OCI Monitoring allows you to set this duration for aggregation?
+
+A. Metric Namespace
+B. Dimension
+C. Interval
+D. Resolution
+
+**Your answer: C — CORRECT** (you applied the Q6 lesson). **Interval** is the aggregation window. **Resolution** is the close distractor: it's how often data points are *returned/plotted* (the regularity of the time series), not the window each point aggregates. Namespace and dimension select and filter the metric. See [[8. Management and Governance — OCI Resource Manager, OS Management Hub, Observability]] ("Interval vs. Resolution").
+
+### Q10 — Serverless / appropriate use case for the Events service
+Which of the following is an appropriate use case for the OCI Events service?
+
+A. Replicate Virtual Cloud Networks (VCNs) automatically across regions without additional services.
+B. Perform SQL queries directly against data stored in an OCI Object Storage bucket.
+C. Trigger a function using Oracle Functions when new files are uploaded to an OCI Object Storage bucket.
+D. Increase the size of an existing block volume without using any API or automation.
+
+**Your answer: C — CORRECT.** Events matches state changes (here `com.oraclecloud.objectstorage.createobject`) and routes them to Functions, Notifications or Streaming. Two live gotchas from the capstone that exams like to probe: the bucket must have **Emit Object Events** on (`object_events_enabled = true`), or no event is ever emitted; and the Events service needs `Allow service cloudEvents to use functions-family` to invoke the function. A, B and D aren't things Events does (no VCN replication, no querying, and D describes a manual resize). See [[14. Serverless — OCI Functions, Events, API Gateway]] and the capstone's `lab-capstone-enrich-stack`.
+
+### Q11 — Networking / LB listeners with virtual hostnames and a shared path route set
+An OCI Load Balancer has three listeners sharing path route set PathRouteSet1: Listener 1 (no virtual hostname, default backend set A), Listener 2 (virtual hostname captive.com, default B), Listener 3 (virtual hostname wild.com, default C). PathRouteSet1: exact match `/tame/` → B, exact match `/feral/` → C. Where do U1 `http://captive.com/` and U2 `http://wild.com/tame/` go?
+
+A. U1 will be routed to backend set A, U2 will be routed to backend set B.
+B. U1 and U2 will be routed to backend set A.
+C. U1 will be routed to backend set B, U2 will be routed to backend set C.
+D. U1 and U2 will be routed to backend set B.
+
+**Your answer: A — INCORRECT. Correct: D.** Order of evaluation: pick the listener by **virtual hostname** (Host header), then apply that listener's path route set, then fall back to the listener's default. U1 → captive.com listener; `/` matches no path rule → its default **B** (not A: the no-hostname listener only takes hosts that match no hostname). U2 → wild.com listener; exact `/tame/` → **B**, overriding its default C. **Added a "How a request picks a backend set" subsection with this worked example to [[9. Networking — OCI VCN, DRG, Gateways, Load Balancers]].**
