@@ -781,3 +781,44 @@ C. Encrypt the password using the OCI Vault service, then decrypt this password 
 D. Use the OCI Console to enter the password in the function configuration section in the provided input field.
 
 **Your answer: A — INCORRECT (same wrong answer as attempt 1). Correct: C.** There is no "auto-decrypt" into a config variable. Documented flow: encrypt the password with a Vault key, store the **ciphertext** as a config variable, and the **function code** calls the Vault/KMS decrypt API at runtime. B is false (config variables aren't auto-encrypted); D puts plaintext in config. The word "auto" in A is the trap. See [[14. Serverless — OCI Functions, Events, API Gateway]]; added to the repeat-miss list in [[OCI Architect Professional Tips]].
+
+### Q19 — Security / WAF rule type for SQL injection and XSS
+You've observed SQL injection and Cross-Site Scripting (XSS) attacks against your web applications and decide to implement OCI WAF. Which type of WAF rule should you configure to detect and block such threats?
+
+A. Encryption rule
+B. Protection rule
+C. Access control rule
+D. Rate Limiting rule
+
+**Your answer: D — INCORRECT. Correct: B (Protection rule).** WAF **protection rules** are the OWASP-based signature capabilities (SQLi, XSS, etc.) that inspect request content. **Rate limiting** caps request *volume* per client (DDoS/brute force), **access control** allows/blocks by IP, geography, path or headers, and "encryption rule" isn't a WAF rule type (TLS is handled by the LB/certificates). Match the threat to the rule: *content attack → protection*, *volume → rate limiting*, *who/where → access control*. See [[5. Security — OCI IAM, WAF, Certificates, Vault, Cloud Guard]].
+
+### Q20 — Databases / DB system backup to Object Storage failed: first troubleshooting step
+You run a mission-critical database on an OCI DB system with regular backups to Object Storage and notice a failed backup status in the Console. What troubleshooting action should be performed to determine the cause?
+
+A. Ensure that your database host can connect to OCI Object Storage.
+B. Ensure the database archiving mode is set to NOARCHIVELOG.
+C. Ensure that the dcsagent program is not restarted in case of a stop/waiting status.
+D. Ensure that the database is not active and running while the backup is in progress.
+
+**Your answer: C, then changed to A during the attempt** (you'd nearly picked A first; confirm the final answer on the results page). **Correct: A.** Oracle's DB system backup-failure troubleshooting starts with **connectivity from the DB host to Object Storage** (service gateway or NAT route, security rules, DNS). B, C and D are each an **inverted** version of a real check: backups need **ARCHIVELOG** mode (not NOARCHIVELOG); a stopped/waiting **dcsagent should be restarted** (`systemctl start initdcsagent` / `status`), not left alone; and the database must be **active and running** for an online backup. Trap pattern: a real item with its condition flipped by a "not". See [[6. Databases — OCI Database, NoSQL, Caching, DR]].
+
+### Q21 — Storage / attaching one block volume to multiple instances
+A startup runs 8 compute instances and wants common storage, so you propose attaching a block volume to multiple instances. Which option is true for such a solution?
+
+A. You can delete a block volume from one instance without detaching it from all other instances, thereby keeping other instances' storage intact.
+B. Block volumes attached as read-only are configured as non-shareable by default.
+C. Once you attach a block volume to an instance as read-only, it can only be attached to other instances as read-only.
+D. If the block volume is already attached to an instance as read/write non-shareable, you can attach it to another instance.
+
+**Your answer: D — INCORRECT. Correct: C.** Multi-attach rules from the Block Volume docs: once a volume has a **read-only** attachment, further attachments must also be read-only (to go read/write, detach it everywhere first). Read-only attachments are **shareable by default** (B is backwards). A **read/write non-shareable** attachment is exclusive, so D can't happen; use read/write **shareable** plus a cluster-aware file system instead. A volume can't be deleted while attached anywhere (A). Remember too that multi-attach only works within the volume's own AD (Q14). See [[4. Storage — OCI Object, Archive, File, Block Storage]].
+
+
+### Q22 — Databases / Autonomous Database deployment model: rapid, elastic, low admin, no dedicated infra
+A company needs Autonomous AI Database with rapid provisioning, elastic scaling and minimal administrative overhead, and does not require dedicated database infrastructure or infrastructure-level customization. Which deployment model?
+
+A. Hybrid only
+B. Dedicated with pools
+C. Dedicated with custom policies
+D. Serverless
+
+**Your answer: D — CORRECT.** Autonomous Database has two deployment models, **Serverless** and **Dedicated** (Exadata infrastructure reserved for you, for isolation and control over maintenance and infrastructure). "Doesn't need dedicated infrastructure or infra-level customization" rules out Dedicated; "Hybrid only" isn't an ADB deployment model. Live tie-in: the capstone's database is Serverless (created in about 4½ minutes). See [[6. Databases — OCI Database, NoSQL, Caching, DR]].

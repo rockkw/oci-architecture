@@ -29,60 +29,166 @@ Unlike your AWS tips file, this isn't a refresh of old notes — it's a first pa
 - **Autonomous Database Shared vs. Dedicated**: Dedicated (Exadata infrastructure) is the answer whenever a scenario mentions strict isolation, custom maintenance windows, or specific compliance/regulatory requirements — Shared is the default/cost-optimized answer otherwise.
 - **FastConnect vs. VPN Connect**: same "private dedicated line vs. IPSec over internet" framing as AWS Direct Connect vs. Site-to-Site VPN — this one instinct probably does transfer cleanly.
 
-## 4. Recurring exam-question pattern: fabricated-option distractors
+## 4. Exam traps: master list (fabricated options, swapped nouns, "auto" steps)
 
-**Observed starting with the Autonomous Database skill check retake**:
-several MyLearn skill-check questions mix real OCI concepts with
-**entirely fabricated options that sound plausible but don't exist**,
-rather than just offering real-but-wrong answers. Two distinct flavors
-seen so far:
+This section is the single master list of every exam trap logged in this repo.
+Topic notes keep the technical explanation and point back here (`⚠ Trap: … —
+see [[OCI Architect Professional Tips]] §4`). Per-question detail lives in
+[[MyLearn Skill Check Questions]].
 
-1. **Fabricated services/features** — e.g., "Azure HPC" and "Dedicated
-   Exadata infrastructure in AWS" as deployment-option choices (neither
-   is a real Autonomous Database deployment option — AD has no native
-   Azure/AWS deployment at all), or "Autonomous Blockchain Database" as
-   a workload-type choice (not one of the real four: ATP/ADW/AJD/APEX).
-2. **Real concepts, wrong scope** — e.g., "Name of superuser" and
-   "Network access type" as provisioning inputs (both ARE real
-   provisioning-time inputs) offered alongside the three the question
-   was actually built around (deployment type, compute model/shape,
-   workload type) — correct-sounding but not what's being asked.
+### How the traps are built
 
-**Study implication**: don't pattern-match on "does this sound like a
-real OCI term" — verify against the actual closed, finite list of named
-options. This is a common Oracle cert-exam style, not unique to this
-skill check, so expect it on the real 1Z0-997-26 exam too. See
-[[MyLearn Skill Check Questions]] for each flagged instance as it comes
-up.
+MyLearn skill checks and the practice exam rarely offer only real-but-wrong
+answers. The wrong options follow a few repeatable patterns:
 
-**Five-step prep strategy against this pattern:**
-1. **Build "the finite list" for every enumerable OCI concept, and drill
-   it as a set, not individual facts.** For anything with a fixed
-   number of named options (workload types, deployment options, clone
-   types, consumer group tiers, etc.), memorize the *count* first, then
-   the names — see the "Finite-lists cheat-sheet" below. If you know
-   there are exactly 4, a 5th-sounding option is an instant red flag no
-   matter how plausible it sounds.
-2. **Treat every "sounds right but I don't specifically remember it"
-   answer as a red flag, not a plausible answer.** The trap isn't "is
-   this a real thing" — it's "is this one of the *specific* things this
-   question is asking about." Ask "which exact named list does this
-   question want?" before evaluating options.
-3. **Default to "probably fabricated" for an unfamiliar service/feature
-   name**, rather than assuming you missed it. Oracle's naming is
-   fairly systematic (e.g., all Autonomous workload types follow an
-   "Autonomous X Database/Processing/Warehouse" pattern); a name that
-   grafts a competitor's brand onto an OCI term ("Azure HPC") or bolts
-   an unrelated Oracle product name onto a naming convention
-   ("Autonomous Blockchain Database") is a strong tell.
-4. **Use the skill-check log and the Top 10 review list as a targeted
-   drill deck** — the fabricated wrong answers are as valuable to study
-   as the right ones, since they show exactly what Oracle's exam
-   writers consider plausible-sounding bait.
-5. **Mentally count before answering.** If a question says "which
-   three," count how many listed options you're *certain* are real vs.
-   how many you're inferring from vocabulary familiarity — that
-   surfaces uncertainty before you commit, not after.
+1. **Fabricated services/features.** A plausible name that doesn't exist:
+   "Azure HPC" or "Dedicated Exadata infrastructure in AWS" as ADB deployment
+   options, "Autonomous Blockchain Database", "IP address segregation",
+   "OCI Global Load Balancers", "Diff Detection", a "Rollback…" menu item, a
+   "local" retention policy, a WAF "encryption rule", `$HOME/.manifest`.
+2. **Real concept, wrong scope.** Every option is a true fact, but only some
+   belong to the set the question asks for (e.g. "Name of superuser" and
+   "Compute model and shape" are real ADB provisioning inputs, just not among
+   the three the question wants; sharding is real, but it's Globally
+   Distributed ADB, not standard provisioning).
+3. **One-word swaps.** The option reads correctly except for one noun or
+   adjective: **newest** for oldest, **Resolution** for Interval, **OKE** for
+   Functions, **docker-registry secret** for auth token, **restore** for
+   clone, **region** for endpoint.
+4. **Invented "auto" steps.** "Auto-encrypt… auto-decrypted", "automatically
+   encrypted by Functions". OCI Vault never does crypto for you silently.
+5. **A real check with its condition flipped by "not".** "Ensure the
+   dcsagent is **not** restarted", "set **NOARCHIVELOG**", "database **not**
+   running during backup": each is a genuine troubleshooting item, inverted.
+6. **Heavier or manual option when a native one exists.** Building an OIC
+   flow/Function/code change instead of API Gateway rate limiting; manual DNS
+   changes/scripts instead of Full Stack DR automated failover.
+
+**Before answering:**
+1. **Know the closed list and its count** (see the finite-lists cheat-sheet
+   below). If there are exactly four, a fifth plausible name is a red flag.
+2. **Ask which exact list the question wants.** "Is this real?" isn't enough;
+   "is it one of *these* N?" is the test.
+3. **Treat an unfamiliar name as probably fabricated.** Oracle naming is
+   systematic; a competitor brand grafted onto an OCI term is a tell.
+4. **Read each option for the one swapped word**, and ask *where does this
+   actually run / what does this field actually do?*
+5. **Count before committing.** For "choose TWO/THREE", count options you're
+   certain of vs. ones you're inferring from familiar vocabulary.
+
+### Master trap tables
+
+*Seen in:* **Att 1/Att 2 Qn** = MyLearn practice exam 997-26, attempt 1/2;
+**SC *name* Qn** = MyLearn skill check; **Workshop Qn** = official prep
+workshop sample question; a note name = trap written up only in that note.
+"(missed)" = answered wrong (including answers corrected before submitting);
+**(missed twice)** = wrong on two separate attempts. Qualifiers like "likely"
+come from the source entry.
+
+#### Security
+
+| Trap (the wrong-but-plausible option) | Reality / correct answer | Seen in | Details |
+| --- | --- | --- | --- |
+| Vault "auto-encrypts" the password and a config variable references the "auto-decrypted" value; or config variables are "automatically encrypted by Functions" | No auto-encrypt/auto-decrypt. Encrypt with a Vault key, store the **ciphertext** as a config variable, and the **function code calls Decrypt** at runtime | Att 1 Q3 (likely missed); Att 2 Q18 **(missed twice)** | [[14. Serverless — OCI Functions, Events, API Gateway]], [[5. Security — OCI IAM, WAF, Certificates, Vault, Cloud Guard]] |
+| **Rate Limiting rule** (or "Encryption rule") to stop SQL injection/XSS | **Protection rule** (signature-based, inspects request content). Content attack → protection; volume → rate limiting; who/where → access control; "encryption rule" isn't a WAF rule type | Att 2 Q19 (missed); SC Security Q1 | [[5. Security — OCI IAM, WAF, Certificates, Vault, Cloud Guard]] |
+| Network Firewall evaluates **Security rules before Decryption rules** | Decryption → Security (unmatched = dropped) → Tunnel Inspection → NAT | SC Security Q4 (missed) | [[5. Security — OCI IAM, WAF, Certificates, Vault, Cloud Guard]] |
+| Dedicated KMS offers a **shared** HSM partition / requires OCI APIs for all crypto | **Single-tenant** HSM partition with full control; industry-standard interfaces (PKCS#11) let apps talk to the HSM directly | SC Security Q5 (missed) | [[5. Security — OCI IAM, WAF, Certificates, Vault, Cloud Guard]] |
+| Dedicated KMS cluster can simply be created | Default service limit for Dedicated KMS HSM partitions is **zero**; request a limit increase first | Note 5 | [[5. Security — OCI IAM, WAF, Certificates, Vault, Cloud Guard]] |
+| Dynamic group for a Certificate Authority is needed "to create TLS certificates after the CA is created" | The **CA itself** needs a resource-principal identity (dynamic group) to call Vault/Object Storage | SC Security Q2 (missed) | [[5. Security — OCI IAM, WAF, Certificates, Vault, Cloud Guard]] |
+| `oci kms crypto encrypt` failed because the **region** wasn't specified (or needs key-version OCID / JSON plaintext) | **Wrong endpoint**: crypto operations need the vault's `-crypto` endpoint, not the `-management` endpoint | Att 1 Q8 (likely missed) | [[5. Security — OCI IAM, WAF, Certificates, Vault, Cloud Guard]] |
+| Secret rollback via a "Rollback…" menu, a copied version 3, or "soft links" between versions | **Promote to Current** on the `PREVIOUS` version (CLI `--current-version-number`) | Att 2 Q3 | [[5. Security — OCI IAM, WAF, Certificates, Vault, Cloud Guard]] |
+| OCI Bastion = public endpoint on the instance, a firewall, or a credential-validation service | Managed, controlled entry point to private-subnet resources via time-limited sessions; instances need no public IP | Workshop Q3; SC Security Q3 | [[5. Security — OCI IAM, WAF, Certificates, Vault, Cloud Guard]] |
+| Private keys, DB passwords or API tokens injected via instance `metadata` or `.tfvars` (like the SSH public key) | Secrets go in **Secret Management**, fetched at boot via instance principal; metadata is for non-sensitive bootstrap data only | Note 5 | [[5. Security — OCI IAM, WAF, Certificates, Vault, Cloud Guard]] |
+| Storage encryption = database TDE | Different things; first identify whether the need is encryption at rest, TDE/key administration, customer-managed keys, protected backups or cross-region DR | Note 5 | [[5. Security — OCI IAM, WAF, Certificates, Vault, Cloud Guard]] |
+| A Tunnel Inspection rule by itself allows or blocks the inner traffic | It only decides whether encapsulated traffic is inspected; the verdict still comes from Security Rules on the decapsulated packet | Note 5 | [[5. Security — OCI IAM, WAF, Certificates, Vault, Cloud Guard]] |
+| Dynamic-group matching rule `ALL` vs. `ANY` mixed up | `ALL` = every condition must match; `ANY` = at least one | Note 5 | [[5. Security — OCI IAM, WAF, Certificates, Vault, Cloud Guard]] |
+
+#### Cloud-Native, Serverless, and Containers
+
+| Trap (the wrong-but-plausible option) | Reality / correct answer | Seen in | Details |
+| --- | --- | --- | --- |
+| **Docker-registry secret** (or SSH key pair, Vault master key, JWT) as the prerequisite for `docker push/pull` to OCIR | **Auth token**, used as the `docker login` password. The registry secret is the later, Kubernetes-side object built *from* the token | Att 2 Q7 (missed); Workshop Q2 | [[12. Containers — OCI OKE, Container Instances, OCIR]] |
+| **ConfigMap** stores registry credentials for a private image pull | **Secret** (type `kubernetes.io/dockerconfigjson`) referenced in `imagePullSecrets`; ConfigMap is non-sensitive config only | SC Cloud-Native Q1 (missed) | [[12. Containers — OCI OKE, Container Instances, OCIR]] |
+| **"Local"** image retention policy for all repos in a region | **Global** retention policy (region-wide); the other real type is **Custom**, not "local" | SC Cloud-Native Q3 (missed) | [[12. Containers — OCI OKE, Container Instances, OCIR]] |
+| Deleted OCIR image can be undeleted for **24 hours** | **48 hours** | SC Cloud-Native Q4 (missed) | [[12. Containers — OCI OKE, Container Instances, OCIR]] |
+| kubeconfig is a "manifest file" in `$HOME/.manifest` | `$HOME/.kube/config`; Cloud Shell access needs a **public** Kubernetes API endpoint | Att 1 Q1 | [[12. Containers — OCI OKE, Container Instances, OCIR]] |
+| OKE tier defaults are the same in every tool | Console defaults to **Enhanced**, CLI/API to **Basic**; Basic → Enhanced is upgrade-only | [[AWS to OCI Exceptions]] | [[12. Containers — OCI OKE, Container Instances, OCIR]] |
+| Function "must be deployed only to **OKE**" | OCI Functions is its own managed (Fn Project-based) service; functions run in a Functions application | Att 2 Q16 (missed) | [[14. Serverless — OCI Functions, Events, API Gateway]] |
+| "Creating an event rule is not permitted for Object Storage" | Object Storage is a standard event source; the bucket must have **Emit Object Events** on (off by default). The [[practice-1-updated]] key marking this correct is wrong per Oracle docs | Att 2 Q16 | [[14. Serverless — OCI Functions, Events, API Gateway]] |
+| DDoS on an API Gateway backend: "VCN **IP address segregation**" (not a real feature), or build an OIC flow / Function / code change | **Rate limiting** request policy on the API Gateway deployment: fastest, no new service | Att 1 Q4 (missed) | [[14. Serverless — OCI Functions, Events, API Gateway]] |
+| A microservice is "a style of design… loosely coupled component architecture" | That's microservices **architecture**. **A** microservice = small program, discrete logic, well-defined boundary | Att 1 Q9 (likely missed); Att 2 Q17 | [[14. Serverless — OCI Functions, Events, API Gateway]] |
+
+#### Databases
+
+| Trap (the wrong-but-plausible option) | Reality / correct answer | Seen in | Details |
+| --- | --- | --- | --- |
+| **Compute model and shape** (or name of superuser) as one of the three ADB provisioning inputs | **Deployment type, network access type, workload type.** Compute model and superuser are real inputs, just not the three asked for | SC ADB Q1 **(missed twice)** | [[6. Databases — OCI Database, NoSQL, Caching, DR]] |
+| "Azure HPC" / "Dedicated Exadata infrastructure in AWS" as ADB deployment options | Fabricated. Real four: Serverless, Dedicated, Exadata Cloud@Customer, Dedicated Region Cloud@Customer | SC ADB Q2 | [[6. Databases — OCI Database, NoSQL, Caching, DR]] |
+| "Autonomous Blockchain Database" workload type | Fabricated. Real four: ATP, ADW, AJD, APEX | SC ADB Q3 | [[6. Databases — OCI Database, NoSQL, Caching, DR]] |
+| ADB is provisioned into **Oracle Shards**; or the customer manages the Exadata hardware first | Each ADB is a **pluggable database** on **Oracle-managed Exadata**; sharding is the separate Globally Distributed ADB | SC ADB Q4 (missed) | [[6. Databases — OCI Database, NoSQL, Caching, DR]] |
+| "Access only from OCI **peered** VCNs" network access option | Fabricated. Real three: secure access from everywhere, allowed IPs and VCNs only, private endpoint only | SC ADB Q5 (missed) | [[6. Databases — OCI Database, NoSQL, Caching, DR]] |
+| Near-zero data loss via **block volume replication across ADs** | **Continuous redo** shipped to Recovery Service (Zero Data Loss tier, sub-second RPO) | Att 2 Q4 (missed; changed during attempt, confirm final) | [[6. Databases — OCI Database, NoSQL, Caching, DR]] |
+| In-place **point-in-time restore** when the corrupted state must be kept for investigation | **Clone** from a backup before the corruption; leave production untouched (a clone of the current DB copies the corruption) | Att 2 Q5 (likely missed) | [[6. Databases — OCI Database, NoSQL, Caching, DR]] |
+| "Enable CPU auto scaling" as an expensive/impractical fix (inverted "which are NOT good" question) | Auto scaling is the practical fix. Per the source key: manual scale-up each peak (impractical) and permanent peak sizing (expensive) | Att 2 Q15 (partly missed); [[practice-1-updated]] Q63 | [[6. Databases — OCI Database, NoSQL, Caching, DR]] |
+| Autonomous Recovery Service is built on Data Guard/RMAN/GoldenGate; ARS = ZRCV | ARS is built on **Zero Data Loss Recovery Appliance** technology. ZRCV is the separate, extra-cost, ADB-specific sub-second-RPO tier | Workshop Q4 | [[6. Databases — OCI Database, NoSQL, Caching, DR]] |
+| DB system backup to Object Storage failed: ensure the dcsagent is **not** restarted, set **NOARCHIVELOG**, or make sure the DB is **not** running | First check **DB host connectivity to Object Storage** (service gateway/NAT route, security rules, DNS). Restart a stopped dcsagent; backups need ARCHIVELOG; DB must be running | Att 2 Q20 (missed; changed during attempt, confirm final) | [[6. Databases — OCI Database, NoSQL, Caching, DR]] |
+| Base DB **Local Storage** backup as a DR copy | Lives in the DB System's Fast Recovery Area: if the DB System is unavailable, so is the backup | Note 6 | [[6. Databases — OCI Database, NoSQL, Caching, DR]] |
+| OCPUs freed by scaling down/terminating an ADB are immediately available to another ADB in the ACD | "Reclaimable OCPUs" return only after the container database is restarted | Note 6 | [[6. Databases — OCI Database, NoSQL, Caching, DR]] |
+| DynamoDB → Oracle NoSQL is a drop-in, client-compatible swap | Named false equivalence: API, data model, consistency and query patterns must be re-validated | [[AWS to OCI Exceptions]] | [[6. Databases — OCI Database, NoSQL, Caching, DR]] |
+
+#### Observability
+
+| Trap (the wrong-but-plausible option) | Reality / correct answer | Seen in | Details |
+| --- | --- | --- | --- |
+| **Dimension** or **Resolution** is the aggregation time window | **Interval** (`[5m]`). Resolution = spacing between window starts (API-only); dimensions filter | Att 2 Q6 (missed); Att 2 Q9 | [[8. Management and Governance — OCI Resource Manager, OS Management Hub, Observability]] |
+| **Interval** is an optional MQL component | Required: metric, interval, statistic. Optional: dimensions, grouping function | Att 2 Q8 (half-missed) | [[8. Management and Governance — OCI Resource Manager, OS Management Hub, Observability]] |
+| One unified observability service (CloudWatch/X-Ray style) | Monitoring (metrics), Logging (logs), APM (traces) are separate services; Audit is separate again | [[AWS to OCI Exceptions]] | [[1. DevOps — OCI DevOps, CI-CD, Observability]] |
+
+#### High Availability and Disaster Recovery
+
+| Trap (the wrong-but-plausible option) | Reality / correct answer | Seen in | Details |
+| --- | --- | --- | --- |
+| **Scalability** as one of the three HA design pillars | **Monitoring, Redundancy, Failover** | SC HA/DR Q5 (missed) | [[Lab 2 - OCI Architect Pro Exam - HADR Design]] |
+| "Mean/Minimum Time to Recover" as the DR-effectiveness metrics | **RPO and RTO** | SC HA/DR Q1 | [[Lab 2 - OCI Architect Pro Exam - HADR Design]] |
+| ADs provide HA "within a fault domain"; a region has only one AD | Region → ADs → fault domains (FDs isolate within an AD, always 3 per AD); regions have 1 or 3 ADs | SC HA/DR Q3 | [[3. Compute — OCI Compute, Instance Pools, Load Balancers, Volumes]] |
+| **Physical Standby** for a replica open read-only while replication runs | **Active Data Guard** (licensed); a plain physical standby must stop redo apply to open read-only | SC HA/DR Q2 | [[6. Databases — OCI Database, NoSQL, Caching, DR]] |
+| Minimal-downtime region DR via manual DNS reconfiguration, snapshots or custom scripts | Full Stack DR **automated failover** of the complete application stack | Workshop Q1 | [[Lab 2 - OCI Architect Pro Exam - HADR Design]] |
+| Full Stack DR Switchover/Failover = Data Guard switchover/failover | Same words, different scope: Full Stack DR acts on the whole stack in a DR Protection Group | Lab 2 | [[Lab 2 - OCI Architect Pro Exam - HADR Design]] |
+| "Backup vs. replication" as one tenancy-wide decision | Decide per tier, per RPO | Lab 2 | [[Lab 2 - OCI Architect Pro Exam - HADR Design]] |
+
+#### Networking
+
+| Trap (the wrong-but-plausible option) | Reality / correct answer | Seen in | Details |
+| --- | --- | --- | --- |
+| Find a blocking VNIC's parent by pasting its OCID in the **Console search box**; or delete the VNIC first; or `--force` | **CLI** `oci network vnic get` (display-name names the owner) / `vnic-attachment`; delete the parent resource, then the subnet | Att 1 Q6 (likely missed); Att 2 Q1 | [[9. Networking — OCI VCN, DRG, Gateways, Load Balancers]] |
+| Request for a host that matches a listener's virtual hostname falls to the **no-hostname listener's** default | Listener by **virtual hostname** → that listener's path route set → that listener's default backend set | Att 2 Q11 (missed) | [[9. Networking — OCI VCN, DRG, Gateways, Load Balancers]] |
+| "OCI Global Load Balancers" (likely fabricated) or IP Prefix steering to route users to their nearest region | Traffic Management **GeoLocation** steering policy | Att 1 Q7 | [[9. Networking — OCI VCN, DRG, Gateways, Load Balancers]] |
+| Private-subnet app to a public-endpoint ADB via an Internet Gateway, remote peering, or Service Gateway alone | **NAT Gateway** route `0.0.0.0/0` + stateful egress rule (NAT is the more specific route when both exist) | Att 1 Q10 | [[9. Networking — OCI VCN, DRG, Gateways, Load Balancers]] |
+| An ephemeral public IP survives stop/start | Only a **Reserved** public IP is stable | Note 9 | [[9. Networking — OCI VCN, DRG, Gateways, Load Balancers]] |
+| AWS five-address subnet reservation; a `/30` is usable for scaling workloads | OCI reserves 3 (first two, last); `/30` leaves **1 usable IP** | Note 9; [[AWS to OCI Exceptions]] | [[9. Networking — OCI VCN, DRG, Gateways, Load Balancers]] |
+| Build a Site-to-Site VPN/FastConnect between Azure and OCI to reach Oracle Database@Azure | The OCI-managed private network is part of the product | Note 7 | [[7. Multicloud and Hybrid — Oracle Database@Azure, FastConnect, DRG]] |
+
+#### Compute and Storage
+
+| Trap (the wrong-but-plausible option) | Reality / correct answer | Seen in | Details |
+| --- | --- | --- | --- |
+| Instance-pool scale-in terminates the **newest** instance first | AD-balance → FD-balance → **oldest** first | Att 1 Q2 (missed) | [[3. Compute — OCI Compute, Instance Pools, Load Balancers, Volumes]] |
+| Cooldown stops metric collection; autoscaling doesn't use Monitoring metrics | Cooldown only suppresses new scaling actions; autoscaling triggers on Monitoring metrics such as CPU | Att 1 Q2 | [[3. Compute — OCI Compute, Instance Pools, Load Balancers, Volumes]] |
+| "Encryption at rest already covers it" | **Confidential computing** encrypts memory *in use*, the gap at-rest/in-transit encryption leaves | Note 3 | [[3. Compute — OCI Compute, Instance Pools, Load Balancers, Volumes]] |
+| A **read/write non-shareable** block-volume attachment can be attached to another instance (or read-only is non-shareable by default; or delete while attached) | R/W non-shareable is exclusive; once attached read-only, further attachments must be read-only; read-only is shareable by default; can't delete while attached | Att 2 Q21 (missed) | [[4. Storage — OCI Object, Archive, File, Block Storage]] |
+| A shareable block volume for concurrent access from instances in **multiple ADs** | Block volumes attach only within their own AD; use **File Storage** (+ snapshots) | Att 2 Q14 | [[4. Storage — OCI Object, Archive, File, Block Storage]] |
+| Resizing a block/boot volume means the OS sees the new space | Grow the filesystem separately (`growpart`, `resize2fs`) | Note 4 | [[4. Storage — OCI Object, Archive, File, Block Storage]] |
+
+#### Other (IaC, Governance, Migration)
+
+| Trap (the wrong-but-plausible option) | Reality / correct answer | Seen in | Details |
+| --- | --- | --- | --- |
+| "Resource names in Terraform are provider specific" read as true; provider aliases read as false | False: the resource **type** is provider-namespaced, the **name** is arbitrary. Aliases are real. "Terraform is an IaaS" is also false (it's IaC) | SC IaC Q5 (missed) | [[1. DevOps — OCI DevOps, CI-CD, Observability]] |
+| "Diff Detection" | **Drift Detection** | SC IaC Q2 | [[8. Management and Governance — OCI Resource Manager, OS Management Hub, Observability]] |
+| `terraform apply` fixes formatting, fetches plugins, or destroys and recreates everything | Those are `fmt`, `init`, `destroy`. Apply makes the changes and updates state | SC IaC Q3 | [[8.1 Terraform & OCI Resource Manager - Hands-On Reference]] |
+| Resource Manager needs a `.tfvars` file (or separate config) per environment | Resource Manager shows Console fields for variables and can auto-populate some values; `.tfvars` is the local-Terraform workflow | SC IaC Q1 | [[8. Management and Governance — OCI Resource Manager, OS Management Hub, Observability]] |
+| Terraform running **inside** Resource Manager authenticates with API keys | **Resource principal** | Note 8.1 | [[8.1 Terraform & OCI Resource Manager - Hands-On Reference]] |
+| An OCI managed-service equivalent exists for AWS DataSync / AWS SCT | No direct answer: DataSync → Rclone/rsync/Resilio + connectivity; SCT → SQL Developer desktop tool | Note 13 | [[13. Migration and Transfer — Oracle Cloud Migrations, Data Transfer, Database Migration]] |
 
 ### Finite-lists cheat-sheet — closed sets to drill by count, not vocabulary
 
@@ -160,21 +266,6 @@ up.
 | OKE control-plane components (fully Oracle-managed regardless of tier) | 5 | `kube-apiserver`, `kube-scheduler`, `kube-controller-manager`, `cloud-controller-manager`, `etcd` — you never provision, patch, or scale any of these yourself |
 
 *Source detail for each row lives in the corresponding numbered Note file ([[6. Databases — OCI Database, NoSQL, Caching, DR]] for DB rows, [[5. Security — OCI IAM, WAF, Certificates, Vault, Cloud Guard]] for IAM/Vault/Network Firewall rows, [[3. Compute — OCI Compute, Instance Pools, Load Balancers, Volumes]] for Compute rows, [[1. DevOps — OCI DevOps, CI-CD, Observability]] for DevOps/Observability rows, [[4. Storage — OCI Object, Archive, File, Block Storage]] for Storage rows, [[9. Networking — OCI VCN, DRG, Gateways, Load Balancers]] for Networking rows, [[7. Multicloud and Hybrid — Oracle Database@Azure, FastConnect, DRG]] for Multicloud/Hybrid rows, [[8. Management and Governance — OCI Resource Manager, OS Management Hub, Observability]] for Governance/Organization Management rows, [[12. Containers — OCI OKE, Container Instances, OCIR]] for Containers/OKE rows). Add rows here as new finite lists turn up in other domains (Migration, Serverless, etc.) — this table is meant to keep growing across the whole exam, not stay Databases-only.*
-
-## 4a. Swapped-noun and "auto" traps seen in practice exam attempt 2
-
-The wrong option usually reads correctly except for **one swapped service or
-field name**, or an invented **"auto"** step. Before choosing, ask *where does
-this actually run / what does this field actually do?*
-
-| Trap option | Swapped for | Question |
-|---|---|---|
-| "…deployed only to **OKE**" | OCI Functions runs in a Functions application | Events + Functions demo |
-| **Resolution** | **Interval** is the aggregation window | Monitoring query |
-| Block volume **replication across ADs** | **Continuous redo** to Recovery Service | Near-zero data loss |
-| Kubernetes **docker-registry secret** | **Auth token** for `docker login` | OCIR push/pull |
-| "Vault **auto-encrypt… auto-decrypted** config variable" | Encrypt with Vault, **decrypt in function code** | Functions DB password (**missed in both attempts**) |
-| Point-in-time **restore** of production | **Clone** from a pre-corruption backup | Keep corrupted state for investigation |
 
 ## 5. Study approach adjustments vs. your AWS process
 - Question banks (WhizLabs-equivalent for OCI) are useful for the MCQ portion only — don't mistake a high practice-test score for lab readiness.
