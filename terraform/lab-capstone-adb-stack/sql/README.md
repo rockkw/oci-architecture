@@ -34,5 +34,8 @@ oci os preauth-request create --region us-phoenix-1 -bn mymagnet-onnx-models \
 ```
 
 That Oracle download URL is itself a PAR, so it can be rotated. If it fails,
-take the current link from the docs page. The name of the `.onnx` file inside
-the zip is from Oracle's blog and hasn't been checked here.
+take the current link from the docs page. Checked 2026-09-25: the URL answers
+(122,537,890 bytes, last modified 2025-10-30), and the zip's directory lists
+`all_MiniLM_L12_v2.onnx`, `README-ALL_MINILM_L12_V2-augmented.txt` and
+`LICENSE_ATTRIBUTION.txt`. The same `.onnx` name is in Oracle's
+[SQL Quick Start](https://docs.oracle.com/en/database/oracle/oracle-database/26/vecse/sql-quick-start-using-vector-embedding-model-uploaded-database.html).

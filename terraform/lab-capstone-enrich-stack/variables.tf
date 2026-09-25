@@ -41,23 +41,26 @@ variable "output_prefix" {
   default = "enriched/"
 }
 
-# Base URL of Phase 4's vLLM server behind the internal LB, e.g.
-# "http://10.0.2.50:8000" (func.py appends /v1/chat/completions). Empty
-# until Phase 4, and empty means placeholder tags: the pipeline can be
-# tested end to end before any GPU exists.
+# Base URL of Phase 4's model server (llama.cpp's llama-server, CPU-only)
+# behind the internal LB, e.g. "http://10.0.2.50" (func.py appends
+# /v1/chat/completions). Empty until Phase 4, and empty means placeholder
+# tags: the pipeline can be tested end to end before the model exists.
 variable "llm_endpoint" {
   type    = string
   default = ""
 }
 
-# The name vLLM serves the model under (its --served-model-name).
+# The name the model is served under (llama-server's --alias, from
+# lab-capstone-vllm-stack's served_model_name: "qwen2.5-1.5b-instruct").
+# No default, because it only matters once llm_endpoint is set.
 variable "llm_model" {
   type    = string
   default = ""
 }
 
-# Vault secret holding the key vLLM was started with (lab-capstone-vllm-stack
-# runs it with --api-key from the vllm-api-key Kubernetes Secret). Store the
+# Vault secret holding the key the model server was started with
+# (lab-capstone-vllm-stack passes it as LLAMA_API_KEY from the vllm-api-key
+# Kubernetes Secret). Store the
 # same value in Vault and pass its OCID here. The function reads the secret
 # at runtime, and the policy grants read on just this one secret.
 variable "llm_api_key_secret_ocid" {

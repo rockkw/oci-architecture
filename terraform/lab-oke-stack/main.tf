@@ -199,6 +199,23 @@ resource "oci_core_network_security_group_security_rule" "workers_ingress_from_c
   }
 }
 
+# The API server calls the kubelet on 10250 for `kubectl logs`, `exec` and
+# `port-forward`. workers_ingress_from_cp above only opens the 10256 health
+# port, so those commands timed out with "dial tcp <node>:10250: i/o timeout".
+resource "oci_core_network_security_group_security_rule" "workers_ingress_from_cp_kubelet" {
+  network_security_group_id = oci_core_network_security_group.workers.id
+  direction                 = "INGRESS"
+  protocol                  = "6"
+  source                    = oci_core_network_security_group.control_plane.id
+  source_type               = "NETWORK_SECURITY_GROUP"
+  tcp_options {
+    destination_port_range {
+      min = local.kubelet_api_port
+      max = local.kubelet_api_port
+    }
+  }
+}
+
 # Workers <-> workers (pod-to-pod / node-to-node traffic)
 resource "oci_core_network_security_group_security_rule" "workers_egress_to_workers" {
   network_security_group_id = oci_core_network_security_group.workers.id

@@ -8,18 +8,22 @@
 -- Phase 4 is applied. That LB's NSG already admits 10.0.2.0/24, which
 -- includes this ADB's private endpoint IP.
 --
--- UNVERIFIED: whether Select AI requires HTTPS for provider_endpoint. A blog
--- hints it does; Oracle's UTL_HTTP/private-endpoint page shows an 'http'
--- ACL privilege but doesn't say either way for DBMS_CLOUD_AI. If a plain
--- http:// endpoint is rejected, put TLS on the internal LB (an OCI
--- Certificates cert, like Phase 1's) and use https://.
+-- HTTPS IS NEEDED (checked 2026-09-25). ADB's PL/SQL package notes, UTL_HTTP:
+-- "HTTP connections are disallowed for both public endpoints and private
+-- endpoints"; a private-endpoint database may use HTTPS on any port. The
+-- Select AI pages don't restate this, but every provider_endpoint example is
+-- HTTPS. So this script uses https:// and needs TLS on the internal LB first
+-- (an OCI Certificates cert, like Phase 1's). A private-CA certificate also
+-- needs a customer-managed wallet in the database; whether DBMS_CLOUD_AI uses
+-- that wallet is still unverified. The 'http' ACL privilege below is the
+-- privilege name for both HTTP and HTTPS.
 
 -- 1. Run as ADMIN: send outbound connections through the private endpoint,
 --    so the database can reach a host inside the VCN. PRIVATE_ENDPOINT (not
 --    ENFORCE_PRIVATE_ENDPOINT) leaves DBMS_CLOUD/Object Storage traffic on
 --    Oracle's service network, so the ONNX model load in 02 keeps working.
 --    The ADB NSG (mymagnet-adb-nsg) then also needs an EGRESS rule to the
---    vLLM LB's IP on port 80; it has none today (add it to
+--    vLLM LB's IP on the TLS port; it has none today (add it to
 --    lab-capstone-adb-stack/main.tf when Phase 4 is live).
 ALTER DATABASE PROPERTY SET ROUTE_OUTBOUND_CONNECTIONS = 'PRIVATE_ENDPOINT';
 
@@ -56,15 +60,16 @@ END;
 --    /v1/chat/completions (Oracle's Fireworks example strips that suffix).
 --    model must match the name vLLM serves (--served-model-name; Phase 4
 --    uses qwen2.5-7b-instruct).
---    Unverified: Oracle's page says to use provider_endpoint "instead of
---    the provider parameter", but a summary of its example also showed
---    "provider": "openai" next to it. If CREATE_PROFILE rejects this, add
---    "provider": "openai".
+--    No "provider" attribute (checked 2026-09-25, DBMS_CLOUD_AI docs): "If
+--    you specify provider_endpoint without provider, Select AI treats the
+--    endpoint as OpenAI-compatible". Oracle's Fireworks and xAI examples
+--    omit it; its OCI Data Science example sets "provider": "openai" too,
+--    which is also accepted.
 BEGIN
   DBMS_CLOUD_AI.CREATE_PROFILE(
     profile_name => 'MAGNET_VLLM',
     attributes   => '{
-      "provider_endpoint": "http://&vllm_host",
+      "provider_endpoint": "https://&vllm_host",
       "credential_name":   "VLLM_CRED",
       "model":             "&vllm_model",
       "object_list":       [{"owner": "MAGNET", "name": "TORRENTS"},

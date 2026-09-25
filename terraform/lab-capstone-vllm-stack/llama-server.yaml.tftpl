@@ -1,0 +1,159 @@
+# Rendered by lab-capstone-vllm-stack (terraform output -raw vllm_manifest).
+# CPU-only: llama.cpp's llama-server on lab-oke-cpu-inference-pool-stack's A1
+# node. The names (namespace, Secret, Service) still say "vllm" because the
+# stack started as a vLLM-on-GPU design; keeping them means the LB, its NSG and
+# the Phase 3 Function config don't change.
+# The API key Secret is NOT in this file; create it by hand first:
+#   kubectl -n ${namespace} create secret generic vllm-api-key --from-literal=api-key="$(openssl rand -hex 32)"
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ${namespace}
+---
+# Model cache. Keeps the ~1.1 GB GGUF across pod restarts so it's downloaded
+# once. Block volumes are AD-bound; the CPU inference pool is in AD-1.
+# 50 GB is the oci-bv minimum.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: vllm-model-cache
+  namespace: ${namespace}
+spec:
+  accessModes: ["ReadWriteOnce"]
+  storageClassName: oci-bv
+  resources:
+    requests:
+      storage: ${model_cache_size_gb}Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vllm
+  namespace: ${namespace}
+  labels: { app: vllm }
+spec:
+  replicas: 1
+  # The PVC is ReadWriteOnce, so the old pod has to release it first.
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels: { app: vllm }
+  template:
+    metadata:
+      labels: { app: vllm }
+    spec:
+      # Label set by lab-oke-cpu-inference-pool-stack (initial_node_labels).
+      # Keeps the model off lab-node-pool's 1 OCPU nodes.
+      nodeSelector:
+        workload: ${node_workload_label}
+      initContainers:
+        # Downloads the GGUF once, pinned to a Hugging Face commit, and checks
+        # its sha256. Skips the download when a verified copy is already there.
+        # Uses the server image, which ships curl, so no second image is pulled.
+        - name: fetch-model
+          image: ${image}
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              set -eu
+              f=/models/${model_file}
+              if [ -f "$f" ] && echo "${model_sha256}  $f" | sha256sum -c -; then
+                echo "model already present"; exit 0
+              fi
+              curl -fL --retry 5 -o "$f.part" "${model_url}"
+              echo "${model_sha256}  $f.part" | sha256sum -c -
+              mv "$f.part" "$f"
+          volumeMounts:
+            - name: model-cache
+              mountPath: /models
+      containers:
+        - name: llama-server
+          image: ${image}
+          # The image's entrypoint is /app/llama-server. Flags and values are
+          # separate items: llama-server doesn't parse the --flag=value form
+          # (it rejects "--model=..." as an unknown argument).
+          args:
+            - "--model"
+            - "/models/${model_file}"
+            - "--alias"
+            - "${served_model_name}"
+            - "--ctx-size"
+            - "${max_model_len}"
+            - "--threads"
+            - "${threads}"
+            - "--host"
+            - "0.0.0.0"
+            - "--port"
+            - "8000"
+            - "--no-webui"
+          env:
+            # Anything in 10.0.2.0/24 can reach the LB, so require a bearer token.
+            # llama-server reads LLAMA_API_KEY (same as --api-key). /health is
+            # public by design, which the probes rely on.
+            - name: LLAMA_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: vllm-api-key
+                  key: api-key
+          ports:
+            - name: http
+              containerPort: 8000
+          # No CPU limit: CFS throttling hurts token throughput, and this pod is
+          # the node's only real workload. The request leaves room for the
+          # node's DaemonSets (~0.25 CPU) on a 4 OCPU node.
+          resources:
+            requests:
+              cpu: "${cpu_request}"
+              memory: ${memory_request}
+            limits:
+              memory: ${memory_limit}
+          # /health returns 503 while the model loads and 200 once it's ready.
+          startupProbe:
+            httpGet: { path: /health, port: http }
+            periodSeconds: 5
+            failureThreshold: 60
+          readinessProbe:
+            httpGet: { path: /health, port: http }
+            periodSeconds: 10
+            failureThreshold: 3
+          livenessProbe:
+            httpGet: { path: /health, port: http }
+            periodSeconds: 30
+            failureThreshold: 3
+          volumeMounts:
+            - name: model-cache
+              mountPath: /models
+              readOnly: true
+      volumes:
+        - name: model-cache
+          persistentVolumeClaim:
+            claimName: vllm-model-cache
+---
+# Internal OCI load balancer in the private subnet. Annotation names checked
+# against Oracle's "Configuring Load Balancers and Network Load Balancers" page
+# (docs.oracle.com/en-us/iaas/Content/ContEng/Tasks/contengconfiguringloadbalancersnetworkloadbalancers-subtopic.htm).
+# Plain HTTP, which is enough for the Phase 3 Function. Autonomous Database
+# refuses plain-HTTP outbound calls, so Select AI would need TLS here first.
+apiVersion: v1
+kind: Service
+metadata:
+  name: vllm
+  namespace: ${namespace}
+  annotations:
+    oci.oraclecloud.com/load-balancer-type: "lb"
+    service.beta.kubernetes.io/oci-load-balancer-internal: "true"
+    service.beta.kubernetes.io/oci-load-balancer-subnet1: "${lb_subnet_id}"
+    service.beta.kubernetes.io/oci-load-balancer-shape: "flexible"
+    service.beta.kubernetes.io/oci-load-balancer-shape-flex-min: "10"
+    service.beta.kubernetes.io/oci-load-balancer-shape-flex-max: "10"
+    # Terraform owns every security rule (lab-capstone-vllm-stack/main.tf).
+    oci.oraclecloud.com/security-rule-management-mode: "None"
+    oci.oraclecloud.com/oci-network-security-groups: "${lb_nsg_id}"
+spec:
+  type: LoadBalancer
+  selector: { app: vllm }
+  ports:
+    - name: http
+      port: ${listener_port}
+      targetPort: http
+      protocol: TCP

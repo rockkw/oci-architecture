@@ -20,10 +20,11 @@ ORDER  BY VECTOR_DISTANCE(
 FETCH  APPROX FIRST 10 ROWS ONLY;
 
 -- FETCH APPROX lets the optimizer use torrents_title_hnsw (the metric,
--- COSINE, matches the index). On ADB-S an approximate search is attempted
--- even without the keyword when an index exists (Oracle's VECTOR_DISTANCE
--- docs), so to compare against an exact scan use FETCH EXACT FIRST
--- (keyword unverified in this pass).
+-- COSINE, matches the index). APPROXIMATE is the default when neither
+-- keyword is given, so to compare against an exact scan use FETCH EXACT
+-- FIRST (both verified 2026-09-25 in the 26ai SQL Reference, SELECT,
+-- row_limiting_clause). rowcount may be "an expression that evaluates to a
+-- numeric value", so the app's FETCH APPROX FIRST :n bind is valid.
 --
 -- Check the plan uses the index:
 -- EXPLAIN PLAN FOR <query above>;

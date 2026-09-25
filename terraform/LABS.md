@@ -17,8 +17,9 @@ lab-network-stack
     ├── lab-basedb-stack (needs lab-network-stack's vcn_id + lab-private-network-stack's private_subnet_id)
     └── lab-oke-stack (needs lab-network-stack's public subnet too)
         ├── lab-oke-app-stack (needs lab-oke-stack's cluster_id, dependency-only)
-        ├── lab-oke-gpu-stack (needs lab-oke-stack's cluster_id, workers_nsg_id)
-        └── lab-capstone-vllm-stack (needs lab-oke-stack's workers_nsg_id; runs on lab-oke-gpu-stack)
+        ├── lab-oke-gpu-stack (needs lab-oke-stack's cluster_id, workers_nsg_id; not used by the capstone)
+        ├── lab-oke-cpu-inference-pool-stack (needs lab-oke-stack's cluster_id, kubernetes_version, workers_nsg_id)
+        └── lab-capstone-vllm-stack (needs lab-oke-stack's workers_nsg_id; runs on lab-oke-cpu-inference-pool-stack)
 
 lab-func-stack       (standalone — only depends on lab-network-stack's subnet)
 lab-zpr-stack        (standalone — own VCN/subnet, no dependency on any other stack)
@@ -36,6 +37,7 @@ cluster that a dependent stack's resources still live in:
 
 ```
 lab-capstone-vllm-stack     (delete the vllm Service first so the LB releases its NSG)
+lab-oke-cpu-inference-pool-stack
 lab-oke-gpu-stack
 lab-oke-app-stack           (no dependents — can go anytime, before or after lab-oke-stack)
 lab-oke-stack
@@ -631,6 +633,14 @@ Depends on: `lab-nsg-stack` (an instance OCID, e.g. `instance_public_ip`'s resou
 Outputs: `bucket_name`, `dynamic_group_id`
 
 ### lab-oke-stack
+
+> **Fix, 2026-09-25:** the workers NSG had no ingress from the control plane on
+> **10250** (kubelet). `workers_ingress_from_cp` only opens 10256, the health
+> port, so `kubectl logs`, `exec` and `port-forward` failed with
+> `dial tcp <node>:10250: i/o timeout` while pods ran fine. Added
+> `workers_ingress_from_cp_kubelet` (applied; `kubectl exec` works again).
+> Inputs now live in the gitignored `terraform.tfvars`, recovered from state
+> (the SSH key keeps its trailing space and newline, or the node pool shows a diff).
 Adds a managed Kubernetes cluster: an OKE "basic" cluster with a public API endpoint
 on the public subnet, plus a 2-node pool (same A1.Flex shape as `lab-nsg-stack`'s
 instance) placed in the private subnet. Both the cluster and node pool use VCN-native
@@ -1016,6 +1026,10 @@ nodes already need) and, for a **private** repository, a Kubernetes
 alone doesn't grant pull access to a private repo without one.
 
 ### lab-oke-gpu-stack
+**Not used by the capstone.** On 2026-09-25 the MyMagnet capstone dropped GPUs;
+Phase 4 runs on CPU with `lab-oke-cpu-inference-pool-stack`. This stack stays as a
+standalone lab.
+
 Adds a second, GPU-shaped node pool (default `VM.GPU.A10.1`, 1 node) to an existing
 OKE cluster, alongside — not replacing — `lab-oke-stack`'s CPU node pool. Same
 placement/pod-networking pattern as the CPU pool (private subnet, `OCI_VCN_IP_NATIVE`),
@@ -1068,6 +1082,46 @@ multi-node training — not configured by this stack):
 
 Region/tenancy availability and quota vary per shape — check the live catalog and
 your service limits before picking one.
+
+---
+
+### lab-oke-cpu-inference-pool-stack
+Adds one CPU node for the capstone's Phase 4 model to `lab-oke-cluster`: a
+`VM.Standard.A1.Flex` node pool (`lab-cpu-inference-pool`, 1 node, **4 OCPUs /
+12 GB**, arm64). The capstone uses **no GPUs**; this pool replaces
+`lab-oke-gpu-stack` for Phase 4. `lab-node-pool`'s 1 OCPU / 6 GB nodes have only
+about 0.84 CPU and 4.3 GB allocatable each, too little for a model server.
+
+Same pattern as `lab-oke-stack`'s pool: private subnet, `OCI_VCN_IP_NATIVE` pod
+networking, and nodes and pods in `lab-oke-workers-nsg` (so they register with the
+control plane and `lab-capstone-vllm-stack`'s LB rules apply). The node image is
+looked up from the cluster's own node-pool options, filtered to Oracle Linux
+aarch64, non-GPU, and the cluster's OKE version (plan resolved
+`Oracle-Linux-9.8-aarch64-2026.08.14-0-OKE-1.36.1-1699`). The pool sets the node
+label `workload=llm` (`initial_node_labels`), which the model Deployment selects on.
+
+Depends on: `lab-oke-stack` (`cluster_id`, `kubernetes_version`, `workers_nsg_id`), `lab-private-network-stack` (`private_subnet_id`)
+Outputs: `node_pool_id`, `node_image_id`, `ocpus`
+
+**Sizing.** llama.cpp's speed scales with cores, and one A1 OCPU is one core, so 4
+OCPUs means 4 threads. Qwen2.5-1.5B Q4_K_M uses about 2.2 GB resident, so 12 GB is
+plenty and still fits a 7B Q4 model (~4.7 GB) for comparison. 24 GB would add
+$0.018/h for memory the model can't use. `ocpus` and `memory_in_gbs` are variables.
+
+**Cost (list price, from Oracle's price API, fetched 2026-09-25).** A1 is $0.01 per
+OCPU-hour (B93297) plus $0.0015 per GB-hour (B93298), so 4 OCPUs / 12 GB =
+**$0.058/hour, $42.34/month** (730 h). The 50 GB boot volume adds about $2.13/month
+(B91961 + B91962, Balanced). The tenancy's Always Free A1 allowance (4 OCPUs / 24 GB
+total) is already used by the two MyMagnet instances and the two `lab-node-pool`
+nodes, so this pool is billed from the first hour. Destroy it between sessions.
+
+**Capacity (read-only check, 2026-09-25):** in PHX-AD-1, `standard-a1-core-count`
+has 13,877 available (11 used) and `standard-a1-memory-count` 92,526 GB available.
+A1 can still fail with "Out of host capacity" in an AD; if it does, retry later.
+
+**Plan (2026-09-25):** `terraform fmt -check` and `validate` pass; `terraform plan`
+shows 1 to add, 0 to change, 0 to destroy. Not applied.
+`terraform.tfvars` (gitignored) holds the OCIDs, copied from `lab-oke-gpu-stack`.
 
 ---
 
@@ -1209,20 +1263,30 @@ state) — `oci network-firewall network-firewall get` returns
    applied cleanly on the first pass.
 
 ### lab-capstone-vllm-stack
-Phase 4 of the [MyMagnet capstone](CAPSTONE.md): serves `Qwen/Qwen2.5-7B-Instruct`
-with vLLM on `lab-oke-gpu-stack`'s A10 node, behind an **internal** OCI load
-balancer in the private subnet `10.0.2.0/24`. vLLM exposes an OpenAI-compatible API
-(`/v1/chat/completions`, `/v1/models`), so the Phase 3 Function and, possibly, Phase 2
-Select AI can call it like any OpenAI endpoint.
+Phase 4 of the [MyMagnet capstone](CAPSTONE.md), **CPU only (no GPU)**: serves
+`Qwen2.5-1.5B-Instruct` (GGUF, Q4_K_M) with llama.cpp's `llama-server` on
+`lab-oke-cpu-inference-pool-stack`'s A1 node, behind an **internal** OCI load
+balancer in the private subnet `10.0.2.0/24`. `llama-server` exposes an
+OpenAI-compatible API (`/v1/chat/completions`, `/v1/models`), so the Phase 3
+Function calls it like any OpenAI endpoint.
+
+**History.** This stack was first written for vLLM on `lab-oke-gpu-stack`'s A10.
+On 2026-09-25 the capstone dropped GPUs, and the manifest was switched to llama.cpp
+on CPU. The stack name, the `vllm_manifest` output and the Kubernetes names
+(`vllm` namespace, Deployment and Service, `vllm-api-key` Secret,
+`vllm-model-cache` PVC) were kept, so the applied NSG resources, the LB and the
+Function config don't change. The template was renamed to
+`llama-server.yaml.tftpl`, which only affects the output.
 
 Split the same way as `lab-oke-app-stack`: Terraform owns only OCI resources, and
 the Kubernetes objects are plain YAML applied with `kubectl`. The YAML lives in
-[`vllm.yaml.tftpl`](lab-capstone-vllm-stack/vllm.yaml.tftpl) and Terraform renders it
-into the `vllm_manifest` output, so the NSG and subnet OCIDs don't have to be pasted in
-by hand.
+[`llama-server.yaml.tftpl`](lab-capstone-vllm-stack/llama-server.yaml.tftpl) and
+Terraform renders it into the `vllm_manifest` output, so the NSG and subnet OCIDs
+don't have to be pasted in by hand.
 
-**Builds on:** `lab-oke-stack` (cluster, `lab-oke-workers-nsg`), `lab-oke-gpu-stack`
-(the A10 pool), `lab-private-network-stack` (the LB's subnet).
+**Builds on:** `lab-oke-stack` (cluster, `lab-oke-workers-nsg`),
+`lab-oke-cpu-inference-pool-stack` (the A1 node labelled `workload=llm`),
+`lab-private-network-stack` (the LB's subnet).
 
 Depends on: `lab-oke-stack` (`workers_nsg_id`), `lab-network-stack` (`vcn_id`), `lab-private-network-stack` (`private_subnet_id`)
 Outputs: `lb_nsg_id`, `vllm_manifest`
@@ -1240,15 +1304,7 @@ none of the cross-VCN options are needed:
 | Peer with a Local Peering Gateway, or a DRG | Cluster in another VCN (LPG same region, DRG + RPC cross-region) | Not needed |
 | Move/rebuild the cluster | Cluster in another region | Not needed |
 
-`oci ce cluster list` shows the cluster `ACTIVE` and `lab-node-pool` (2 × A1.Flex)
-`ACTIVE`; `kubectl get nodes` shows both nodes `Ready`. No GPU pool exists yet
-(`lab-oke-gpu-stack` has no state).
-
-**GPU quota (Phoenix, 2026-09-24):** `gpu-a10-count` is 32 per AD, and
-`oci limits resource-availability get … --limit-name gpu-a10-count --availability-domain bXWp:PHX-AD-1`
-returns 32 available, 0 used. The pool goes in AD-1, so no limit increase is needed.
-
-**What the stack creates** (plan: 6 to add, 0 to change, 0 to destroy):
+**What the stack creates** (applied: 6 resources):
 - `lab-capstone-vllm-lb-nsg`, attached to the LB through the
   `oci.oraclecloud.com/oci-network-security-groups` annotation.
   - Ingress TCP 80 from `client_cidr` (`10.0.2.0/24`).
@@ -1262,49 +1318,45 @@ The Service sets `oci.oraclecloud.com/security-rule-management-mode: "None"`, so
 cloud controller manager doesn't edit security lists or create its own NSG; every rule
 is in Terraform. The private subnet's security list only opens 22/443/ICMP, so these
 NSG rules are what let the traffic through (NSG and security-list rules are combined).
+The inference node is in the workers NSG, so the NodePort rules reach it.
 
-**Changes to the upstream stacks, needed for Phase 4:**
-- `lab-oke-stack` gets a `workers_nsg_id` output (output only; no resource change).
-- `lab-oke-gpu-stack` now puts the GPU nodes in the workers NSG (`nsg_ids` and
-  `pod_nsg_ids`, new required variable `workers_nsg_id`). Without it, GPU nodes
-  would hit the same "register timeout" the CPU pool did before the NSG fix.
-- `lab-oke-gpu-stack` also raises the boot volume to 150 GB and adds Oracle's
-  documented cloud-init (fetch `oke_init_script`, run `oci-growfs -y`, run the init
-  script). The vLLM image is about 20 GB unpacked, which is tight on the default 50 GB
-  boot volume. Plan: 1 to add, with the image resolved to
-  `Oracle-Linux-9.8-Gen2-GPU-2026.08.14-0-OKE-1.36.1-1699`.
+**Server image: `ghcr.io/ggml-org/llama.cpp:server-b11176`.** Checked with the
+ghcr.io registry API on 2026-09-25: it's the build the moving `server` tag pointed
+to that day (llama.cpp tag `b11176`, commit `f805c57`), and its index lists
+`linux/amd64`, `linux/arm64` and `linux/s390x` (index digest
+`sha256:6257697a…85e0af`). The CPU build uses `GGML_CPU_ALL_VARIANTS`, so the arm64
+image picks a Neoverse-N1 backend at runtime. The image includes `curl` and
+`sha256sum`, so the init container reuses it.
 
-**Model: `Qwen/Qwen2.5-7B-Instruct`, pinned to revision `a09a3545…8bc28`.**
-- Apache-2.0 and not gated (checked with the Hugging Face API), so no HF token or
-  Secret is needed.
-- 7.6B parameters is about 15.2 GB in bf16. The A10 supports bf16.
-- With `--gpu-memory-utilization=0.90`, vLLM gets about 21.6 GB of the A10's 24 GB.
-  That leaves roughly 4–5 GB for KV cache after weights and CUDA graphs.
-- Qwen2.5-7B uses GQA (28 layers, 4 KV heads × 128), about 56 KB of KV per token, so
-  that's room for tens of thousands of cached tokens.
-- `--max-model-len=8192` (the model's native context is 32K) keeps one long request
-  from claiming the whole cache. It's plenty for enrichment prompts.
-- Fallback if it runs out of memory: `Qwen/Qwen2.5-1.5B-Instruct` (also Apache-2.0,
-  about 3 GB). Avoid `Qwen2.5-3B-Instruct`, which uses the Qwen Research license
-  rather than Apache-2.0.
-- Llama 3.x and Gemma are gated behind a license click-through, so they'd need an HF
-  token.
+**Model: `qwen2.5-1.5b-instruct-q4_k_m.gguf`** from
+[`Qwen/Qwen2.5-1.5B-Instruct-GGUF`](https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct-GGUF),
+Qwen's official GGUF repo.
+- Pinned to commit `91cad51170dc346986eccefdc2dd33a9da36ead9`. Size 1,117,320,736
+  bytes, sha256 `6a1a2eb6…4e9407e` (both from the Hugging Face API).
+- Apache-2.0 and not gated, so no HF token is needed.
+- Served as `qwen2.5-1.5b-instruct` (`--alias`), which is what clients put in
+  `"model"` and what `/v1/models` returns.
+- Memory: about 2.2 GB resident with `--ctx-size 4096` (measured locally with the
+  same image and flags under `docker run --cpus 4`).
+- A bigger model is a variable change: a 7B Q4_K_M (~4.7 GB) fits the 12 GB node
+  but is several times slower on 4 cores. Avoid `Qwen2.5-3B-Instruct`, which uses
+  the Qwen Research license rather than Apache-2.0.
 
-**Deployment details** (`vllm.yaml.tftpl`):
+**Deployment details** (`llama-server.yaml.tftpl`):
 
 | Setting | Value | Why |
 |---|---|---|
-| Image | `vllm/vllm-openai:v0.30.0-x86_64-cu129` | Pinned release (2026-09-22). The cu129 build runs on older drivers than the default CUDA 13 build; check `nvidia-smi` on the node before moving to CUDA 13 |
-| GPU | `nvidia.com/gpu: 1` (request and limit) | OKE's `nvidia-gpu-device-plugin` DaemonSet is already in `kube-system` and schedules onto A10 shapes |
-| Node selector | `beta.kubernetes.io/instance-type: VM.GPU.A10.1` | The same label OKE's device plugin uses for node affinity |
-| Toleration | `nvidia.com/gpu` Exists / NoSchedule | OKE doesn't taint GPU nodes by default (Oracle's GPU page shows no toleration). This only matters if a taint is added later |
-| Probes | `startupProbe` (up to 20 min), `readinessProbe` and `livenessProbe` on `/health` | The first start downloads 15 GB of weights. `/health` isn't behind the API key |
-| Model cache | 50 Gi `oci-bv` PVC at `/models` (`HF_HOME=/models/hf`) | Keeps weights off the boot volume and across pod restarts. 50 GB is the `oci-bv` minimum |
-| `/dev/shm` | 2 Gi memory `emptyDir` | vLLM uses shared memory; the container runtime's default is small |
-| Strategy | `Recreate` | There's only one GPU, so the old pod must release it before the new one starts |
-| Auth | `--api-key=$(VLLM_API_KEY)` from Secret `vllm-api-key` | Anything in `10.0.2.0/24` can reach the LB, including every OKE pod (VCN-native pod IPs come from the same subnet). The key is the only thing separating MyMagnet from any other workload in the subnet |
+| Node selector | `workload: llm` | Label set by `lab-oke-cpu-inference-pool-stack`. Keeps the model off `lab-node-pool`'s 1 OCPU nodes |
+| Init container `fetch-model` | `curl` from `https://huggingface.co/<repo>/resolve/<commit>/<file>`, then `sha256sum -c` | Downloads once into the PVC and skips when a verified copy is already there. A bad download fails the pod instead of loading a corrupt file |
+| Args | `--model /models/<file> --alias qwen2.5-1.5b-instruct --ctx-size 4096 --threads 4 --host 0.0.0.0 --port 8000 --no-webui` | Flag and value are **separate** list items. `llama-server` rejects the `--flag=value` form (`invalid argument: --model=…`), found in the local test |
+| Threads | 4 (`threads` variable) | One per A1 OCPU on the 4 OCPU node |
+| Resources | requests `cpu: 3`, `memory: 3Gi`; limit `memory: 6Gi`; no CPU limit | The node's DaemonSets request about 0.13–0.23 CPU. No CPU limit avoids CFS throttling of the 4 threads. No GPU requests |
+| Probes | `startupProbe` (5 min), `readinessProbe` and `livenessProbe` on `/health` | `/health` returns 503 while loading and 200 when ready. It's public by design, so the probes need no key |
+| Model cache | 50 Gi `oci-bv` PVC at `/models` (read-only in the server container) | Survives pod restarts. 50 GB is the `oci-bv` minimum. `WaitForFirstConsumer` puts the volume in the node's AD (AD-1) |
+| Strategy | `Recreate` | The PVC is ReadWriteOnce |
+| Auth | `LLAMA_API_KEY` env from Secret `vllm-api-key` | Same effect as `--api-key`, without the key in the pod args. Anything in `10.0.2.0/24` can reach the LB, including every OKE pod (VCN-native pod IPs come from the same subnet) |
 
-**Service annotations**, checked against Oracle's
+**Service annotations** (unchanged), checked against Oracle's
 [Configuring Load Balancers and Network Load Balancers](https://docs.oracle.com/en-us/iaas/Content/ContEng/Tasks/contengconfiguringloadbalancersnetworkloadbalancers-subtopic.htm)
 page rather than written from memory:
 
@@ -1321,20 +1373,21 @@ Optional, not used: `oci.oraclecloud.com/reserved-private-ips` would pin the LB 
 fixed IP in `10.0.2.0/24`. It's supported on Kubernetes 1.32+ (the cluster runs
 1.36.1) and would save updating the Function config after every rebuild.
 
-**Validation (2026-09-24):**
-- `terraform fmt -check` and `terraform validate`: pass, for this stack and for
-  `lab-oke-gpu-stack`.
-- `terraform plan` against the live tenant: 6 to add here, 1 to add for
-  `lab-oke-gpu-stack`.
-- The manifest was rendered with a placeholder NSG OCID, and
-  `kubectl apply --dry-run=client` created all four objects in dry-run mode:
-  Namespace, PVC, Deployment and Service.
-- Nothing has been applied.
+**Validation (2026-09-25, CPU rework):**
+- `terraform fmt -check` and `terraform validate`: pass.
+- `terraform plan`: **no resource changes** (0 to add, 0 to change, 0 to destroy);
+  only the `vllm_manifest` output changes.
+- The manifest rendered from the plan passed `kubectl apply --dry-run=client`
+  (Namespace, PVC, Deployment, Service).
+- Local test on Apple Silicon (arm64) with the same image and args: the init
+  script downloaded the file and the sha256 matched; `/health` returned 200;
+  `/v1/models` without a key returned 401; with the key it listed
+  `qwen2.5-1.5b-instruct`; a chat completion answered. Speed on A1 will be lower
+  than the laptop's, so check the `timings` field in a real response.
 
-**Cost.** `VM.GPU.A10.1` is roughly $2/hour at list price (confirm on Oracle's price
-list) and bills whenever the instance runs, even with no traffic. The 150 GB boot
-volume, the 10 Mbps flexible LB and the 50 GB PVC are small next to that. Only keep
-the GPU pool while testing; a 2-hour session is about $4–5.
+**Cost.** See [`lab-oke-cpu-inference-pool-stack`](#lab-oke-cpu-inference-pool-stack):
+the node is $0.058/h. The 10 Mbps flexible LB is about $0.012/h and the 50 GB PVC
+about $2.13/month. Phase 4 running 24×7 is about $56/month.
 
 #### Runbook: bring up
 
@@ -1342,39 +1395,30 @@ the GPU pool while testing; a 2-hour session is about $4–5.
 cd terraform
 export SUPPRESS_LABEL_WARNING=True
 
-# 0. Confirm A10 capacity in PHX-AD-1 (read-only)
-oci limits resource-availability get --compartment-id <compartment_ocid> \
-  --service-name compute --limit-name gpu-a10-count \
-  --availability-domain bXWp:PHX-AD-1 --region us-phoenix-1
+# 1. CPU inference pool: about 10 min. A1 billing starts here.
+(cd lab-oke-cpu-inference-pool-stack && terraform plan -out=cpu.tfplan && terraform apply cpu.tfplan)
+kubectl get nodes -l workload=llm -o wide        # expect 1 node, Ready, arm64
 
-# 1. Publish the workers NSG output (no resource changes)
-(cd lab-oke-stack && terraform apply)          # same -var flags as before
-(cd lab-oke-stack && terraform output workers_nsg_id)
+# 2. Save the new manifest into state (output-only change; the NSGs are already
+#    applied), then render it
+(cd lab-capstone-vllm-stack && terraform plan -out=vllm.tfplan && terraform apply vllm.tfplan)
+(cd lab-capstone-vllm-stack && terraform output -raw vllm_manifest > /tmp/llm.yaml)
 
-# 2. GPU pool: about 10-20 min. Billing starts here.
-(cd lab-oke-gpu-stack && terraform plan && terraform apply)
-kubectl get nodes -l beta.kubernetes.io/instance-type=VM.GPU.A10.1
-kubectl describe node <gpu-node-ip> | grep nvidia.com/gpu   # expect Capacity 1
-
-# 3. LB NSG and rules, then render the manifest
-(cd lab-capstone-vllm-stack && terraform plan && terraform apply)
-(cd lab-capstone-vllm-stack && terraform output -raw vllm_manifest > /tmp/vllm.yaml)
-
-# 4. API key Secret first, then everything else
+# 3. API key Secret first, then everything else
 kubectl create namespace vllm
 kubectl -n vllm create secret generic vllm-api-key \
   --from-literal=api-key="$(openssl rand -hex 32)"
-kubectl apply -f /tmp/vllm.yaml
-kubectl -n vllm rollout status deploy/vllm --timeout=30m
-kubectl -n vllm logs deploy/vllm | tail          # model loaded, "Application startup complete"
-kubectl -n vllm get svc vllm                     # EXTERNAL-IP should be a 10.0.2.x address
+kubectl apply -f /tmp/llm.yaml
+kubectl -n vllm logs deploy/vllm -c fetch-model -f   # ~1.1 GB download, then "OK"
+kubectl -n vllm rollout status deploy/vllm --timeout=15m
+kubectl -n vllm logs deploy/vllm | tail              # "server is listening on http://0.0.0.0:8000"
+kubectl -n vllm get svc vllm                         # EXTERNAL-IP should be a 10.0.2.x address
 ```
 
 #### Runbook: smoke test
 
-Clients must be in `10.0.2.0/24`. A throwaway pod on the CPU nodes counts, because
-VCN-native pod IPs come from that subnet. Otherwise run the same `curl` from a
-MyMagnet instance.
+Clients must be in `10.0.2.0/24`. A throwaway pod counts, because VCN-native pod
+IPs come from that subnet. Otherwise run the same `curl` from a MyMagnet instance.
 
 ```bash
 LB_IP=$(kubectl -n vllm get svc vllm -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
@@ -1384,7 +1428,8 @@ kubectl run curl --rm -it --restart=Never --image=curlimages/curl -- \
   curl -s http://$LB_IP/v1/chat/completions \
     -H "Authorization: Bearer $KEY" \
     -H "Content-Type: application/json" \
-    -d '{"model":"qwen2.5-7b-instruct","messages":[{"role":"user","content":"Reply with exactly five words."}],"max_tokens":32}'
+    -d '{"model":"qwen2.5-1.5b-instruct","messages":[{"role":"user","content":"Reply with exactly five words."}],"max_tokens":32}'
+# The reply's "timings.predicted_per_second" is the token rate on the A1 node.
 
 # Negative checks
 kubectl run curl --rm -it --restart=Never --image=curlimages/curl -- \
@@ -1392,7 +1437,7 @@ kubectl run curl --rm -it --restart=Never --image=curlimages/curl -- \
 curl -m 5 http://$LB_IP/health    # from the laptop: should time out (internal LB, private IP)
 ```
 
-#### Runbook: tear down (the same day)
+#### Runbook: tear down
 
 Order matters. The LB's VNIC holds the LB NSG, so the Service has to go before
 `terraform destroy` can delete the NSG.
@@ -1402,10 +1447,10 @@ Order matters. The LB's VNIC holds the LB NSG, so the Service has to go before
 kubectl -n vllm delete svc vllm
 kubectl -n vllm delete deploy vllm
 oci lb load-balancer list --compartment-id <compartment_ocid> --region us-phoenix-1 \
-  --query 'data[]."display-name"'    # wait until the vLLM LB is gone
+  --query 'data[]."display-name"'    # wait until the internal LB is gone
 
-# 2. Remove the GPU pool. This is the step that stops the ~$2/h.
-(cd lab-oke-gpu-stack && terraform destroy)
+# 2. Remove the inference pool. This stops the A1 billing (~$0.06/h).
+(cd lab-oke-cpu-inference-pool-stack && terraform destroy)
 oci ce node-pool list --compartment-id <compartment_ocid> --region us-phoenix-1 \
   --query 'data[].{name:name,shape:"node-shape",state:"lifecycle-state"}' --output table
 # expect only lab-node-pool
@@ -1415,16 +1460,17 @@ kubectl delete namespace vllm                       # also deletes the PVC and i
 (cd lab-capstone-vllm-stack && terraform destroy)   # NSGs are free, so this can wait
 ```
 
-Keeping the `vllm` namespace (and PVC) between sessions avoids re-downloading 15 GB.
-The PVC's block volume costs only a little per month and stays in PHX-AD-1, the same
-AD the GPU pool uses.
+Keeping the `vllm` namespace (and PVC) between sessions avoids re-downloading the
+model, though at 1.1 GB that takes well under a minute. The PVC costs about
+$2.13/month and stays in PHX-AD-1, the same AD as the inference pool.
 
-**Select AI (Phase 2) as a client.** The ADB private endpoint will be in
-`10.0.2.0/24`, so `client_cidr` already covers it. Its NSG needs egress to the LB IP on
-port 80, and the database needs a network ACL for the host
-(`DBMS_NETWORK_ACL_ADMIN.APPEND_HOST_ACE`). **Unconfirmed: whether Select AI's
-`provider_endpoint` accepts plain `http://`.** It may require HTTPS. Test before
-relying on it.
+**Select AI (Phase 2) can't use this endpoint as built.** Autonomous Database
+refuses plain-HTTP outbound calls on both public and private endpoints (verified
+2026-09-25; see the Phase 2 notes in CAPSTONE.md). So Select AI can't call
+`http://<LB_IP>`, even though the ADB private endpoint is inside `client_cidr`.
+It would need TLS on this LB first (below), plus an ADB NSG egress rule to the LB
+and a network ACL for the host. That's future work. The Phase 3 Function stays on
+HTTP.
 
 **HTTPS later (not built).** The listener is plain HTTP on purpose. The earlier
 attempt to issue a private CA certificate from OCI Certificates failed on IAM (see
@@ -1432,8 +1478,8 @@ CAPSTONE.md, Phase 1). Two ways to add TLS once a certificate exists:
 1. Terminate TLS at the LB, using the CCM's SSL-port and TLS-secret annotations
    (check the exact names on the same Oracle page first), with port 443 on the LB
    NSG.
-2. Pass TCP through to vLLM, started with `--ssl-certfile`/`--ssl-keyfile` from a
-   mounted Secret.
+2. Pass TCP through to `llama-server`, started with `--ssl-cert-file`/`--ssl-key-file`
+   from a mounted Secret.
 
 Option 1 keeps certificates out of the pod and matches how `lab-mymagnet-stack`'s
 public LB was set up.
@@ -1549,7 +1595,7 @@ same resource-principal dynamic group) and `lab-func-stack` (Functions applicati
 Differences, and why:
 
 - **Private subnet.** The function runs in MyMagnet's NAT-routed `10.0.2.0/24`
-  subnet, not a public one, because Phase 4's vLLM sits behind an *internal* LB.
+  subnet, not a public one, because Phase 4's model sits behind an *internal* LB.
   That subnet also routes Oracle services through a service gateway, so Object
   Storage and OCIR traffic stays off the internet (checked read-only 2026-09-24).
   The function gets its own NSG (`function_nsg_id` output). Phase 4's LB NSG
@@ -1562,7 +1608,8 @@ Differences, and why:
   `urllib` against the OpenAI-compatible `/v1/chat/completions`. A timeout or bad
   reply still writes a record with `status = "llm_error"`, so a failure leaves
   something visible in the bucket.
-- **API key from Vault.** `lab-capstone-vllm-stack` starts vLLM with `--api-key`.
+- **API key from Vault.** `lab-capstone-vllm-stack` starts the model server
+  (llama.cpp, CPU only) with an API key (`LLAMA_API_KEY`).
   Set `llm_api_key_secret_ocid` to a Vault secret holding the same value. The
   function reads it via resource principal and sends it as `Authorization:
   Bearer`, and the policy gains `read secret-bundles` on that one secret only.
@@ -1640,7 +1687,7 @@ in a Vault secret, then:
 
 ```bash
 terraform apply -var llm_endpoint=http://<internal-lb-ip> \
-  -var llm_model=qwen2.5-7b-instruct \
+  -var llm_model=qwen2.5-1.5b-instruct \
   -var llm_api_key_secret_ocid=<vault-secret-ocid>
 ```
 
@@ -1682,7 +1729,7 @@ instance dynamic group for the secret-read policy). Differences, and why:
   wallet is allowed once the database has a private endpoint) lets
   python-oracledb Thin mode connect with just user, password and DSN, and 1521
   stays closed. The NSG has no egress rule: the rules are stateful, so replies
-  are allowed. Phase 4's Select AI will need an egress rule to the vLLM LB.
+  are allowed. Phase 4's Select AI will need an egress rule to the Phase 4 LB (and TLS on it).
 - **The ADMIN password comes from a Vault secret, not a plain argument.**
   `random_password` produces the value, `oci_vault_secret` stores it, and the ADB
   uses `secret_id`. The person running the apply needs `read secret-bundles` on

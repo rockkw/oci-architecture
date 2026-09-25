@@ -25,11 +25,14 @@ CREATE VECTOR INDEX torrents_title_hnsw
   DISTANCE COSINE
   WITH TARGET ACCURACY 95;
 
+-- DML on an HNSW-indexed table is allowed in 26ai (verified 2026-09-25:
+-- RU 23.4 and 23.5 blocked it; "Transactional Support for Neighbor Graph
+-- Vector Indexes" lifted that). New rows go to a journal rather than into
+-- the graph, and queries search the journal exactly, so searches slow down
+-- as DML accumulates until the graph is refreshed. Irrelevant at this size.
+--
 -- Alternative: IVF (neighbor partitions) lives on disk rather than in the
--- vector pool. Use it instead if the HNSW create fails for memory, or if
--- DML against an HNSW-indexed table turns out to be restricted in the
--- database version you get (unverified here for 26ai; the app inserts
--- continuously).
+-- vector pool. Use it instead if the HNSW create fails for memory.
 -- CREATE VECTOR INDEX torrents_title_ivf
 --   ON torrents (title_vec)
 --   ORGANIZATION NEIGHBOR PARTITIONS

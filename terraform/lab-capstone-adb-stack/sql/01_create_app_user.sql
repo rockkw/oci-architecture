@@ -11,10 +11,11 @@ CREATE USER magnet IDENTIFIED BY "&app_password"
   QUOTA UNLIMITED ON data;
 
 -- DB_DEVELOPER_ROLE is the 23ai+ bundle for application schemas (CREATE
--- SESSION, TABLE, SEQUENCE, VIEW, PROCEDURE, ...). CREATE MINING MODEL is
--- granted explicitly because the ONNX model is a mining-model object in
--- this schema. Unverified whether DB_DEVELOPER_ROLE already includes it;
--- granting it twice is harmless.
+-- SESSION, TABLE, SEQUENCE, VIEW, PROCEDURE, ...). It already includes
+-- CREATE MINING MODEL (verified 2026-09-25 in the 26ai Security Guide's
+-- DB_DEVELOPER_ROLE privilege list), so the explicit grant below is
+-- redundant. It's kept so the need is visible: the ONNX model is a
+-- mining-model object in this schema.
 GRANT DB_DEVELOPER_ROLE TO magnet;
 GRANT CREATE MINING MODEL TO magnet;
 
