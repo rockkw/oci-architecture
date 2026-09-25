@@ -303,7 +303,7 @@ resource "oci_identity_policy" "sch_to_bucket" {
 }
 
 resource "oci_sch_service_connector" "log_archive" {
-  count          = var.enable_log_archive ? 1 : 0
+  count          = var.enable_log_archive && var.enable_log_connector ? 1 : 0
   compartment_id = var.compartment_ocid
   display_name   = "mymagnet-log-archive"
   description    = "Archive the MyMagnet log group to Object Storage"
@@ -328,5 +328,5 @@ resource "oci_sch_service_connector" "log_archive" {
     batch_rollover_time_in_ms = 420000
   }
 
-  depends_on = [oci_identity_policy.sch_to_bucket]
+  depends_on = [oci_identity_policy.sch_to_bucket, oci_logging_log.custom]
 }

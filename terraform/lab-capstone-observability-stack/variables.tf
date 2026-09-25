@@ -52,6 +52,14 @@ variable "enable_log_archive" {
   default = true
 }
 
+# Connector Hub rejects a log source that has no data yet ("No log sources
+# found to be read"). The custom logs stay empty until the Unified Monitoring
+# Agent is installed by hand on the A1 instances, so turn this on after that.
+variable "enable_log_connector" {
+  type    = bool
+  default = false
+}
+
 # Objects move to Archive tier after this many days, then are deleted.
 # Archive storage has a 90-day minimum retention charge, so delete_after
 # should be at least archive_after + 90 or you pay for days you didn't keep.
