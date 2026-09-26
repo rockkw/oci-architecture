@@ -142,6 +142,7 @@ come from the source entry.
 | --- | --- | --- | --- |
 | **Dimension** or **Resolution** is the aggregation time window | **Interval** (`[5m]`). Resolution = spacing between window starts (API-only); dimensions filter | Att 2 Q6 (missed); Att 2 Q9 | [[8. Management and Governance — OCI Resource Manager, OS Management Hub, Observability]] |
 | **Interval** is an optional MQL component | Required: metric, interval, statistic. Optional: dimensions, grouping function | Att 2 Q8 (half-missed) | [[8. Management and Governance — OCI Resource Manager, OS Management Hub, Observability]] |
+| **Cloud Agent Plugin** (or "Grouping Function", "ObjectCollectionRule") to collect logs from **on-premises** hosts and archive them to Object Storage | **Agent Configuration** (standalone Unified Monitoring Agent on the on-prem host) + **Service Connectors** to Object Storage. Cloud Agent Plugin = Oracle Cloud Agent on OCI compute only; Grouping Function is MQL; ObjectCollectionRule is Logging Analytics ingest *from* Object Storage (opposite direction) | Att 2 Q29 (missed) | [[8. Management and Governance — OCI Resource Manager, OS Management Hub, Observability]] |
 | One unified observability service (CloudWatch/X-Ray style) | Monitoring (metrics), Logging (logs), APM (traces) are separate services; Audit is separate again | [[AWS to OCI Exceptions]] | [[1. DevOps — OCI DevOps, CI-CD, Observability]] |
 
 #### High Availability and Disaster Recovery

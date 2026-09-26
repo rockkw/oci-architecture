@@ -832,3 +832,67 @@ C. Mutual TLS (mTLS) using private certificates
 D. Public certificate deployment
 
 **Your answer: C — CORRECT.** In **mTLS** both client and server present certificates, typically issued by a **private CA** in OCI Certificates for service-to-service traffic. Plain TLS with a public certificate (D) only proves the server's identity; code signing (A) proves who built software, not who is on a connection; "Internet Gateway encryption" (B) isn't a thing (an IGW is a routing target and encrypts nothing). Live tie-in: the capstone database is reached over one-way TLS, since mTLS/wallets were turned off. See [[5. Security — OCI IAM, WAF, Certificates, Vault, Cloud Guard]].
+
+### Q24 — Networking / hybrid connectivity: private, HA, private IPs, dynamic routing
+A latency-sensitive application stays partly on-premises and needs private connectivity to OCI, high availability with no single point of failure, access to VCN resources by private IP, and automatic route exchange. Which architecture best satisfies these requirements?
+
+A. Two redundant FastConnect private virtual circuits terminating in different FastConnect locations within the same metro area, attached to a DRG, using BGP for route exchange.
+B. Site-to-Site VPN with public internet routing and static route advertisements.
+C. A single FastConnect private virtual circuit attached to a DRG with static routing.
+D. A FastConnect public virtual circuit advertising private RFC1918 addresses over BGP.
+
+**Your answer: A — CORRECT.** Map each requirement to a word: *private + latency-sensitive* → FastConnect (not VPN over the internet, B); *no single point of failure* → **two** circuits on diverse locations/routers (not one, C); *private IPs in a VCN* → **private** virtual circuit to a DRG (a **public** virtual circuit reaches OCI public services, and RFC1918 addresses aren't advertised over it, D); *automatic route exchange* → **BGP** (FastConnect always uses BGP; "static routing" in C is itself wrong). See [[7. Multicloud and Hybrid — Oracle Database@Azure, FastConnect, DRG]].
+
+### Q25 — Cloud-Native / API Gateway DDoS mitigation, fastest option (repeat of attempt 1 Q4)
+A developer exposed an HTTP backend through OCI API Gateway; security requires DDoS handling as soon as possible. What should be done?
+
+A. Direct the developer to immediately update the web service to implement DDoS mitigation logic.
+B. Configure the VCN that hosts the API Gateway to enable IP address segregation for that HTTP backend to mitigate DDoS attacks.
+C. Create and deploy an Oracle Integration Cloud flow to implement DDoS mitigation for that HTTP backend.
+D. Create and deploy an Oracle Function that implements DDoS mitigation, invoked from the API Gateway for that HTTP backend.
+E. Configure rate limiting for that HTTP backend in the API Gateway.
+
+**Your answer: E — CORRECT** (fixed since attempt 1, where you chose the fabricated "IP address segregation"). API Gateway's built-in **rate-limiting request policy** is configuration only, so it's the fastest mitigation; A, C and D all require building something new. Note the contrast with Q19: for SQLi/XSS the WAF answer is a *protection* rule; for request floods the answer is *rate limiting*. See [[14. Serverless — OCI Functions, Events, API Gateway]].
+
+### Q26 — Compute / VM created with too small a shape
+A customer realizes they picked too small a shape for a running VM instance. Which option addresses the issue?
+
+A. Delete the running instance and spin up a new instance with the desired shape.
+B. OCI doesn't allow such an operation.
+C. Change the shape of the virtual machine instance using the Change Shape feature available in the console.
+D. Change the shape of the instance without reboot, but stop all applications running on the instance beforehand to prevent data corruption.
+
+**Your answer: C — CORRECT.** VM shapes can be changed in place: Console → instance → **Edit instance → Shape** (screenshot below, from the capstone's `mymagnet-instance-2`: shape series, then OCPUs and memory for a Flex shape). Changing shape on a running VM **reboots it**, which is what makes D wrong ("without reboot"); A is needlessly destructive; B is false. Flex shapes resize OCPU and memory independently within the shape's limits; moving between processor families (e.g. Ampere Arm ↔ AMD x86) needs a compatible image. See [[3. Compute — OCI Compute, Instance Pools, Load Balancers, Volumes]].
+
+![Edit instance: change shape (capstone mymagnet-instance-2)](images/console-edit-instance-change-shape.png)
+
+### Q27 — Cloud-Native / strangler migration to serverless microservices behind one interface
+A legacy monolith is being migrated gradually to containerized serverless RESTful microservices, keeping the monolith running and exposing both through a single interface with simplified management for auditing and monitoring. How can you meet this requirement?
+
+A. Push the container image to the OCI code repository, build a serverless function using the OCI Functions BYOD feature, build an API deployment specification with the functions as back end, and use OCI API Gateway for front-end access.
+B. Push the container image to OCIR, build a serverless function using the OCI Functions BYOD (Bring-Your-Own-Dockerfile) feature, build an API deployment specification with the functions as back end, and use OCI API Gateway for front-end access.
+C. Push the container image to the OCI code repository, create an instance template with a Docker container running the image and an autoscaling instance pool, and use the OCI load balancer as the API endpoint.
+D. Push the container image to OCIR, create an instance template with a Docker container running the image and an autoscaling instance pool, and use the OCI load balancer as the API endpoint.
+
+**Your answer: B — CORRECT.** Two swapped-noun checks: container **images** go to **OCIR** (a DevOps *code repository* holds source, not images: rules out A and C), and "fully serverless" means **Functions** behind **API Gateway**, which also gives the single front door for the monolith's and new services' routes plus central logging/metrics (rules out D's instance pools). See [[14. Serverless — OCI Functions, Events, API Gateway]] and [[12. Containers — OCI OKE, Container Instances, OCIR]].
+
+### Q28 — Security / what makes OCI Bastion secure
+Which OCI Bastion feature improves security when accessing resources in private subnets?
+
+A. Automatically opens all inbound ports on private instances
+B. Requires public IP addresses on target instances
+C. Provides time-limited access sessions controlled through IAM policies
+D. Stores SSH private keys within the bastion service permanently
+
+**Your answer: C — CORRECT.** Bastion sessions have a **TTL** (max 3 hours) and are authorized by **IAM**; targets need **no public IP** (B is backwards), nothing opens ports automatically (A), and you supply a **public** key per session, so the service never stores your private key (D). See [[5. Security — OCI IAM, WAF, Certificates, Vault, Cloud Guard]].
+
+### Q29 — Observability / collect on-premises logs into OCI Logging and archive to Object Storage (choose TWO)
+You manage workload instances **on-premises** and must use OCI Logging to collect their logs and archive Info-level logging data into OCI Object Storage. Which two OCI features help?
+
+A. ObjectCollectionRule
+B. Cloud Agent Plugin
+C. Agent Configuration
+D. Grouping Function
+E. Service Connectors
+
+**Your answer: B, D — INCORRECT. Correct: C, E.** **Agent Configuration** defines what the Unified Monitoring Agent collects (log paths, parser) and which custom log it writes to; on-prem hosts run the **standalone** agent, installed manually. **Service Connectors** (Connector Hub) move logs from Logging to Object Storage. The traps: **Cloud Agent Plugin** is Oracle Cloud Agent on *OCI compute instances*, which doesn't apply to on-prem hosts; **Grouping Function** is MQL/Monitoring vocabulary; **ObjectCollectionRule** is Logging Analytics (ingesting logs *from* Object Storage), the opposite direction. Built live in the capstone: `oci_logging_unified_agent_configuration` ×3 and Connector Hub `mymagnet-log-archive` (Phase 5). See [[8. Management and Governance — OCI Resource Manager, OS Management Hub, Observability]].
