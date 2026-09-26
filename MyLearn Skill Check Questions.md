@@ -1056,3 +1056,33 @@ C. Add an LPG to each VCN, establish a peering connection between the LPGs, and 
 D. Create a DRG, attach both VCNs, and in each VCN route table add a rule for the other VCN's CIDR with the DRG as next hop.
 
 **Your answer: A, C — PARTLY CORRECT (C right, A wrong). Correct: C, D.** An **LPG peers only with another LPG**; a DRG can never be the far end of an LPG connection, so A and B describe an impossible connection (B also invents BGP between a DRG and a VCN). Valid designs: classic **LPG↔LPG** local peering (C), or the modern **DRG hub** with both VCNs as attachments (D), which scales to many VCNs and is what Oracle now recommends. See [[9. Networking — OCI VCN, DRG, Gateways, Load Balancers]].
+
+### Q46 — Security / Zero Trust Packet Routing: only the app tier may reach the DB on 3306
+FinSecure has an API gateway, an application server and a transaction database, and must ensure only the application server can talk to the database on port 3306, **regardless of changes in network topology**. Which ZPR approach meets this?
+
+A. Configure NSGs to allow traffic only from the application server's IP address to the database on port 3306.
+B. Implement a firewall rule on the database server that allows traffic only from the application server's IP address on port 3306.
+C. Define a ZPR policy that allows any resource in the VCN to access the transaction database on port 3306.
+D. Define security attributes for each tier (API Gateway, Application Server, Database) and configure a ZPR policy that permits traffic only from the application tier to the database on port 3306.
+
+**Your answer: D — CORRECT.** ZPR policies are written against **security attributes** on resources, not IP addresses, so they survive IP, subnet and topology changes (the question's key phrase), and they're enforced *in addition to* NSGs/security lists. A and B are IP-based and break when topology changes; C is far too broad for Zero Trust. You built exactly this in [[Lab 5 - OCI Architect Pro Exam - Zero Trust Packet Routing]] (security-attribute namespace, ENUM attribute, ZPR policy in the home region, live proof that ZPR blocks traffic even when an NSG allows it).
+
+### Q47 — Networking / route tables for an internet-facing subnet and an on-prem-facing subnet
+Server-1 (web) must be reached from the internet; server-2 (DNS) from on-premises over FastConnect. They're in two subnets of the same VCN. How should routing be designed?
+
+A. One route table with both an IGW route and DRG routes for on-prem, associated with all subnets.
+B. One route table with both rules, associated with no subnets.
+C. Two route tables: one with the internet route via an IGW, associated with server-1's subnet; one with on-prem routes via a DRG, associated with server-2's subnet.
+D. Two route tables routing all traffic via a DRG, associated with all subnets.
+
+**Your answer: C — CORRECT.** Each subnet has exactly **one** route table, so give each subnet the table matching its role: server-1's (public) subnet gets `0.0.0.0/0 → IGW`, server-2's (private) subnet gets the on-prem CIDRs → DRG. A is the tempting near-miss: it could route, but it gives the DNS subnet an internet path it doesn't need (least exposure, and a subnet serving on-prem is typically private, where an IGW route is useless without public IPs). B does nothing (unassociated), D breaks internet access. Capstone tie-in: `lab-subnet` (IGW route) vs `lab-private-subnet` (NAT route) is this same per-subnet design. See [[9. Networking — OCI VCN, DRG, Gateways, Load Balancers]].
+
+### Q48 — Security / encrypt an existing block volume with a customer-managed key
+Critical data sits on a block volume encrypted with Oracle-managed keys; compliance requires keys the customer controls. Which series of tasks is required?
+
+A. Create a master encryption key, create a new version of it, decrypt the block volume using the existing Oracle-managed keys, and encrypt using the new key version.
+B. Create a master encryption key, create a data encryption key, decrypt the block volume using the existing Oracle-managed keys, and encrypt the volume using the data encryption key.
+C. Create a vault, create a master encryption key in the vault, and assign this master encryption key to the block volume.
+D. Create a vault, import your master encryption key into the vault, generate a data encryption key, and assign the data encryption key to the block volume.
+
+**Your answer: A — INCORRECT. Correct: C.** Switching a volume to a customer-managed key is just **Vault → master encryption key → assign it to the volume** (Console "Edit"/"Assign key", or `oci bv volume-kms-key update`); Block Volume handles the data-encryption keys itself (envelope encryption). You never "decrypt the volume with Oracle-managed keys and re-encrypt" (A, B): an invented manual step. You never assign a **DEK** to a resource (D); only master keys are assigned, and importing (BYOK) is optional, not required. Trap pattern: extra invented procedural steps. Same envelope-encryption model as the sample question in [[OCI Architect Professional Tips]] and [[5. Security — OCI IAM, WAF, Certificates, Vault, Cloud Guard]].

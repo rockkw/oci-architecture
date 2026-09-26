@@ -62,7 +62,9 @@ answers. The wrong options follow a few repeatable patterns:
    running during backup": each is a genuine troubleshooting item, inverted.
 6. **Heavier or manual option when a native one exists.** Building an OIC
    flow/Function/code change instead of API Gateway rate limiting; manual DNS
-   changes/scripts instead of Full Stack DR automated failover.
+   changes/scripts instead of Full Stack DR automated failover; invented
+   decrypt/re-encrypt steps instead of simply assigning a Vault master key
+   to a block volume.
 
 **Before answering:**
 1. **Know the closed list and its count** (see the finite-lists cheat-sheet
@@ -100,6 +102,7 @@ come from the source entry.
 | Secret rollback via a "Rollback…" menu, a copied version 3, or "soft links" between versions | **Promote to Current** on the `PREVIOUS` version (CLI `--current-version-number`) | Att 2 Q3 | [[5. Security — OCI IAM, WAF, Certificates, Vault, Cloud Guard]] |
 | OCI Bastion = public endpoint on the instance, a firewall, or a credential-validation service | Managed, controlled entry point to private-subnet resources via time-limited sessions; instances need no public IP | Workshop Q3; SC Security Q3 | [[5. Security — OCI IAM, WAF, Certificates, Vault, Cloud Guard]] |
 | Private keys, DB passwords or API tokens injected via instance `metadata` or `.tfvars` (like the SSH public key) | Secrets go in **Secret Management**, fetched at boot via instance principal; metadata is for non-sensitive bootstrap data only | Note 5 | [[5. Security — OCI IAM, WAF, Certificates, Vault, Cloud Guard]] |
+| Customer-managed key for a block volume: "decrypt with Oracle-managed keys, then re-encrypt with a new key version / a DEK", or "assign a data encryption key to the volume" (invented manual steps) | Create a vault + **master encryption key** and assign the **MEK** to the volume. Block Volume manages the DEKs itself (envelope encryption); BYOK import is optional | Att 2 Q48 (missed) | [[5. Security — OCI IAM, WAF, Certificates, Vault, Cloud Guard]] |
 | Storage encryption = database TDE | Different things; first identify whether the need is encryption at rest, TDE/key administration, customer-managed keys, protected backups or cross-region DR | Note 5 | [[5. Security — OCI IAM, WAF, Certificates, Vault, Cloud Guard]] |
 | A Tunnel Inspection rule by itself allows or blocks the inner traffic | It only decides whether encapsulated traffic is inspected; the verdict still comes from Security Rules on the decapsulated packet | Note 5 | [[5. Security — OCI IAM, WAF, Certificates, Vault, Cloud Guard]] |
 | Dynamic-group matching rule `ALL` vs. `ANY` mixed up | `ALL` = every condition must match; `ANY` = at least one | Note 5 | [[5. Security — OCI IAM, WAF, Certificates, Vault, Cloud Guard]] |
