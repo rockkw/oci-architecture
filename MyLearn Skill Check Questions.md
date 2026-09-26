@@ -1086,3 +1086,13 @@ C. Create a vault, create a master encryption key in the vault, and assign this 
 D. Create a vault, import your master encryption key into the vault, generate a data encryption key, and assign the data encryption key to the block volume.
 
 **Your answer: A — INCORRECT. Correct: C.** Switching a volume to a customer-managed key is just **Vault → master encryption key → assign it to the volume** (Console "Edit"/"Assign key", or `oci bv volume-kms-key update`); Block Volume handles the data-encryption keys itself (envelope encryption). You never "decrypt the volume with Oracle-managed keys and re-encrypt" (A, B): an invented manual step. You never assign a **DEK** to a resource (D); only master keys are assigned, and importing (BYOK) is optional, not required. Trap pattern: extra invented procedural steps. Same envelope-encryption model as the sample question in [[OCI Architect Professional Tips]] and [[5. Security — OCI IAM, WAF, Certificates, Vault, Cloud Guard]].
+
+### Q49 — Security / `oci kms crypto encrypt` Service Error (repeat of attempt 1 Q8, **missed twice**)
+`oci kms crypto encrypt --key-id ocid1.key.oc1.iad.… --plaintext foobar --endpoint https://bbptfrr5aaeuk-management.kms.us-ashburn-1.oraclecloud.com` fails with a Service Error. Which issue caused it?
+
+A. The plaintext needs to be in JSON form.
+B. The developer has the wrong endpoint.
+C. The user should pass the key version OCID instead of the key OCID.
+D. The developer forgot to specify the region.
+
+**Your answer: C — INCORRECT (attempt 1 picked "region", also wrong). Correct: B.** The URL contains **`-management.kms`**: that's the vault's **management** endpoint (create/rotate/enable keys). `encrypt`/`decrypt`/`generate-data-encryption-key` are data-plane calls that must use the vault's **crypto** endpoint (`…-crypto.kms…`). Read the command first: the endpoint *name* is the tell. The key OCID is correct (key version is optional); the region is implied by the endpoint; plaintext should be base64, not JSON, but that's not what the question's error is about. Already in [[5. Security — OCI IAM, WAF, Certificates, Vault, Cloud Guard]] ("Every vault exposes two distinct, separately-addressed API endpoints").
