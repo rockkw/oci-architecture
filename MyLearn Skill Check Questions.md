@@ -896,3 +896,43 @@ D. Grouping Function
 E. Service Connectors
 
 **Your answer: B, D — INCORRECT. Correct: C, E.** **Agent Configuration** defines what the Unified Monitoring Agent collects (log paths, parser) and which custom log it writes to; on-prem hosts run the **standalone** agent, installed manually. **Service Connectors** (Connector Hub) move logs from Logging to Object Storage. The traps: **Cloud Agent Plugin** is Oracle Cloud Agent on *OCI compute instances*, which doesn't apply to on-prem hosts; **Grouping Function** is MQL/Monitoring vocabulary; **ObjectCollectionRule** is Logging Analytics (ingesting logs *from* Object Storage), the opposite direction. Built live in the capstone: `oci_logging_unified_agent_configuration` ×3 and Connector Hub `mymagnet-log-archive` (Phase 5). See [[8. Management and Governance — OCI Resource Manager, OS Management Hub, Observability]].
+
+### Q30 — Containers / connecting an OKE app to ATP: which option is NOT valid
+A containerized app on OKE needs a connection to an Autonomous Transaction Processing database. Which connection option is **NOT** valid?
+
+A. Use Kubernetes secrets to configure environment variables on the container with the ATP instance OCID and OCI API credentials, then use the `CreateConnection` API endpoint from the service runtime.
+B. Install the OCI Service Broker on the cluster and deploy `ServiceInstance` and `ServiceBinding` resources for ATP, then use the binding name as a volume in the deployment manifest.
+C. Enable Oracle REST Data Services for the required schemas and connect via HTTPS.
+D. Create a Kubernetes secret with contents from the ATP instance wallet files and mount it as a volume at the appropriate path in the deployment manifest.
+
+**Your answer: D — INCORRECT. Correct: A.** Reversed question. D is the standard, valid pattern (wallet → Secret → volume); B (Service Broker binding) and C (ORDS/REST over HTTPS) are also real. A is fabricated: there is no ATP "CreateConnection" API; OCI APIs manage the database (create, scale, download wallet), while the **data** connection is SQL*Net/TLS with a wallet or connect string, or REST via ORDS. Trap pattern: a plausible API name plus real-sounding plumbing (secrets, OCID, API keys). Capstone tie-in: the SQLcl pod connected with a TLS connect string and password from a Kubernetes Secret, no API call involved. See [[12. Containers — OCI OKE, Container Instances, OCIR]] and [[6. Databases — OCI Database, NoSQL, Caching, DR]].
+
+### Q31 — Databases / Serverless vs. Dedicated Autonomous Database
+How do Serverless and Dedicated deployment models differ in OCI Autonomous AI Database?
+
+A. Both models use isolated infrastructure for each customer
+B. Serverless runs only on customer-managed on-premises hardware
+C. Serverless uses shared infrastructure, whereas Dedicated uses isolated infrastructure
+D. Dedicated uses shared infrastructure for all tenants
+
+**Your answer: C — CORRECT.** Serverless runs on Oracle-managed **shared** Exadata infrastructure; Dedicated gives you **isolated** Exadata infrastructure in OCI (or Cloud@Customer), with control over maintenance scheduling and fleet isolation. D swaps the two; B confuses Serverless with Cloud@Customer. Pairs with Q22. See [[6. Databases — OCI Database, NoSQL, Caching, DR]].
+
+### Q32 — Networking / route users to their own region's web servers
+A web app is deployed in multiple OCI regions for a global audience; users from each region should reach the web servers in their own geographic OCI location. Which OCI feature achieves this?
+
+A. OCI Traffic Management IP Prefix steering policy
+B. OCI Public Load Balancers
+C. OCI Traffic Management GeoLocation steering policy
+D. OCI Global Load Balancers
+
+**Your answer: C — CORRECT.** DNS **Traffic Management geolocation steering** answers each query based on the client's geographic location, pointing users at their region's endpoint. **IP prefix** steering (A) routes by the client's source subnet, for known corporate/partner ranges rather than geography. A public load balancer (B) is regional and can't send users between regions. "Global Load Balancer" (D) isn't an OCI product: cross-region steering is done with DNS. See [[9. Networking — OCI VCN, DRG, Gateways, Load Balancers]] (section 7, DNS and Traffic Management).
+
+### Q33 — Security / how NSG rules and OCI Network Firewall rules are evaluated
+An administrator deployed OCI Network Firewall in a VCN and is setting up NSG rules and firewall rules. How are NSG rules and Network Firewall rules evaluated for this traffic?
+
+A. Network Firewall rules are evaluated before NSG rules, ensuring traffic blocked by the firewall never reaches NSG evaluation.
+B. NSG rules are evaluated before Network Firewall rules, so any traffic blocked by NSG rules never reaches the firewall.
+C. When OCI Network Firewall is enabled, NSG rules are ignored, and only the firewall rules control traffic.
+D. NSG rules and Network Firewall rules are evaluated independently, and traffic must be allowed by both for it to pass through.
+
+**Your answer: A — INCORRECT. Correct: D.** They're independent layers: NSGs/security lists are enforced at each VNIC (including the firewall's own VNIC), while the Network Firewall is a routed hop (route tables steer traffic to its IP) applying its own policy. A packet must pass every control on its path, so an allow is needed from both and a deny in either drops it. A and B invent a fixed precedence; C is false (enabling the firewall doesn't disable NSGs). Related: the firewall's *internal* order is Decryption → Security → Tunnel Inspection → NAT, which is a different question. See [[5. Security — OCI IAM, WAF, Certificates, Vault, Cloud Guard]] and [[9. Networking — OCI VCN, DRG, Gateways, Load Balancers]].
