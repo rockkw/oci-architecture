@@ -117,6 +117,8 @@ finish it, and correct this list if any of those three turn out to
 actually match your originally selected answer.
 since they were never actually attempted and self-graded.
 
+Items 18–30 come from **Practice Exam 997-26 attempt 2** (2026-09-25, self-scored ~64% all-or-nothing / ~69% with partial credit vs. 68% pass). Items 13 and 16 were reopened because they were missed in **both** attempts. Every trap is also in [[OCI Architect Professional Tips]] §4, and full question text is in [[MyLearn Skill Check Questions]] (attempt 2 section).
+
 1. ✅ **COMPLETE** — **Network Firewall four-stage pipeline order** —
    Decryption Rules evaluate *first*, then Security Rules, then Tunnel
    Inspection, then NAT. Got this backwards on Skill Check: Architect
@@ -272,7 +274,7 @@ since they were never actually attempted and self-graded.
     anyway because the rest of the sentence read as correct. Full
     write-up in [[3. Compute — OCI Compute, Instance Pools, Load
     Balancers, Volumes]]'s "High availability and scaling" section.
-13. ✅ **COMPLETE** — **No "auto-decrypt" mechanism exists for
+13. ⚠️ **REOPENED 2026-09-25 — missed again in Practice Exam attempt 2** (was marked complete) — **No "auto-decrypt" mechanism exists for
     Vault-encrypted Oracle Functions config variables — decryption is an
     explicit runtime API call in function code.** Missed on Practice
     Exam 997-26 Q3 (my doc-based assessment, not an in-app answer key —
@@ -309,7 +311,7 @@ since they were never actually attempted and self-graded.
     deletion blocked by an attached VNIC" section; command itself also
     added to [[CLI Command Reference - OCI Architect Pro Study]]'s
     "Network Monitoring / Path Analyzer" section.
-16. ✅ **COMPLETE** — **`oci kms crypto encrypt`/`decrypt` require the
+16. ⚠️ **REOPENED 2026-09-25 — missed again in Practice Exam attempt 2** (was marked complete) — **`oci kms crypto encrypt`/`decrypt` require the
     vault's Cryptographic Endpoint, not the Management Endpoint —
     passing the wrong one is a silent trap, not an obviously-labeled
     error.** Missed on Practice Exam 997-26 Q8 — misdiagnosed a
@@ -330,6 +332,55 @@ since they were never actually attempted and self-graded.
     — full write-up in [[14. Serverless — OCI Functions, Events, API
     Gateway]]'s "What a microservice actually is — a definitional trap,
     not an OCI-specific fact" section.
+
+18. **Monitoring Query Language: Interval vs. the other parts.** Missed
+    attempt 2 Q6 (picked Dimension for the aggregation window) and half of
+    Q8 (thought Interval was optional). `metric[interval]{dimensions}
+    .groupingFunction.statistic`: **required = metric, interval,
+    statistic**; optional = dimensions and grouping function. Resolution
+    ≠ Interval. See [[8. Management and Governance — OCI Resource Manager, OS Management Hub, Observability]].
+19. **Logs from on-premises hosts: Agent Configuration + Service
+    Connectors, not "Cloud Agent Plugin".** Missed attempt 2 Q29. Cloud
+    Agent is for OCI instances; on-prem uses the standalone Unified
+    Monitoring Agent configured by an Agent Configuration; Connector Hub
+    archives to Object Storage. Built live in the capstone's
+    `lab-capstone-observability-stack`.
+20. **WAF rule types by threat.** Missed attempt 2 Q19. SQLi/XSS
+    (content) → **protection rule**; request floods → **rate limiting**;
+    who/where → **access control**.
+21. **NSG rules and Network Firewall rules are independent; traffic must
+    pass both.** Missed attempt 2 Q33. Key word is *rules*, not packet
+    path order (same model as AWS SGs/NACLs/Network Firewall).
+22. **Customer-managed key for an existing block volume = create Vault +
+    MEK, assign the MEK.** Missed attempt 2 Q48. No manual
+    decrypt/re-encrypt, never assign a DEK; Block Volume handles data
+    keys (envelope encryption).
+23. **OCIR push/pull prerequisite is an auth token.** Missed attempt 2
+    Q7 (picked Kubernetes docker-registry secret, which is for OKE pulls
+    and is built *from* the token).
+24. **Autonomous Recovery Service near-zero data loss = continuous redo
+    shipping.** Missed at first on attempt 2 Q4 (block volume replication
+    trap). See [[6. Databases — OCI Database, NoSQL, Caching, DR]].
+25. **Logical corruption, keep evidence → clone from a pre-corruption
+    backup, don't restore production in place.** Missed attempt 2 Q5.
+26. **Base Database version upgrades are NOT rolling, even on 2-node RAC,
+    and pre-upgrade backups can't restore across the version boundary.**
+    Missed attempt 2 Q40; the note already had it word for word (recall,
+    not knowledge, gap).
+27. **Load balancer routing order: listener by virtual hostname → path
+    route set → listener's default backend set.** Missed attempt 2 Q11.
+    Worked example in [[9. Networking — OCI VCN, DRG, Gateways, Load Balancers]].
+28. **VCN-to-VCN in one region: LPG↔LPG, or one DRG with both VCNs
+    attached; an LPG never peers with a DRG.** Half-missed attempt 2 Q45.
+29. **Block volume multi-attach rules.** Missed attempt 2 Q21: once
+    attached read-only, further attachments must be read-only;
+    read/write non-shareable is exclusive; attachments are same-AD only.
+30. **Reversed questions ("which is NOT valid", "expensive or
+    impractical").** Missed attempt 2 Q15 (half) and Q30 (picked the
+    valid wallet method; the fabricated `CreateConnection` API was the
+    answer). Method: eliminate every option you recognize as real; the
+    leftover is the answer. Also watch "not"-flipped real checks (attempt
+    2 Q20: restart dcsagent, ARCHIVELOG, DB running).
 
 ### Week 4 — Retrieval practice and booking gate
 
