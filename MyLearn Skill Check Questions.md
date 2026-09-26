@@ -1109,7 +1109,7 @@ D. Autonomous AI Transaction Processing
 
 ### Attempt 2 summary
 
-**Official result: PASSED, 74% (37/50; passing score 68%).** The self-scored estimate below was 64% (32/50), so about 5 answers marked incorrect or half right here were graded correct. Reconcile against MyLearn's *View Feedback* before trusting individual verdicts below.
+**Official result: PASSED, 74% (37/50; passing score 68%).** The self-scored estimate below was 64% (32/50), so about 5 answers marked incorrect or half right here were graded correct. The per-question feedback closed before it could be captured, and MyLearn only keeps "Highest score: 74%" (no per-question review for past attempts). **Unconfirmed verdicts** (most likely sources of the 5-question gap): the half-right multi-selects Q8, Q15, Q16, Q36, Q45 (partial credit would explain +2.5 on its own), Q36 and Q15 (no official key), and possibly Q5 and Q21. **Clear-cut misses to keep studying:** Q6, Q7, Q18 and Q49 (both missed twice), Q19, Q48.
 
 #### Self-scored estimate (from Oracle docs and notes)
 
