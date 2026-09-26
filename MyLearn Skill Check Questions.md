@@ -1005,3 +1005,54 @@ C. Database upgrades require downtime, including upgrades for 2-node RAC databas
 D. Automatic backups created before a database upgrade can always be used to restore the database to the earlier version.
 
 **Your answer: B — INCORRECT. Correct: C.** Already in [[6. Databases — OCI Database, NoSQL, Caching, DR]] nearly verbatim: "Database upgrades are not rolling and does require downtime. This is true for even a two-node RAC database." RAC rolls *patching* and fixed-shape *scaling*, but version upgrades are the exception, which is exactly what B exploits. D is the note's other gotcha: pre-upgrade automatic backups **can't** restore to a pre-upgrade point after the upgrade. A is false: upgrades change packages, roles and privileges (hence "check release notes", e.g. 23ai schema-level grants). The notes had it; the miss was recall under the RAC-rolls-everything instinct.
+
+### Q41 — Governance / valid budget targets (choose TWO)
+You're setting up an alarm on a budget in the OCI Console. Which two are valid targets for creating a budget?
+
+A. Compartment
+B. User
+C. Group
+D. Cost-Tracking Tags
+E. Tenancy
+
+**Your answer: A, D — CORRECT.** OCI Budgets target either a **compartment** (including the root compartment, which covers the whole tenancy, so "Tenancy" isn't a separate target type) or a **cost-tracking tag**. Users and groups aren't budget targets. Budget alerts can fire on actual or forecast spend. See [[8. Management and Governance — OCI Resource Manager, OS Management Hub, Observability]].
+
+### Q42 — Networking / private-subnet app server can't reach a public-endpoint ATP (choose TWO; repeat of attempt 1 Q10)
+An application server in a private subnet can't connect to an ATP Serverless instance. Which two steps enable connectivity?
+
+A. Create a NAT Gateway and add a route rule to the private subnet's route table: 0.0.0.0/0 → NAT Gateway.
+B. Add a remote peering connection from your VCN to the ATP VCN.
+C. Add an internet gateway and a route rule to the private subnet's route table: 0.0.0.0/0 → Internet Gateway.
+D. Add a stateful egress rule to the private subnet's security list: destination 0.0.0.0/0, all protocols.
+
+**Your answer: A, D — CORRECT** (same as attempt 1). A public-endpoint ATP is reached from a private subnet through **NAT** (or a **service gateway**, since ADB is on the Oracle Services Network), plus an **egress** security rule; stateful means replies come back automatically. C is the capstone's own lesson: an IGW gives no egress to a VNIC without a public IP (MyMagnet's "Blocker 2" until it moved to the NAT subnet). B is wrong: serverless ATP doesn't live in a VCN you can peer with (for private access you'd give it a private endpoint in your VCN, as the capstone did). See [[9. Networking — OCI VCN, DRG, Gateways, Load Balancers]].
+
+### Q43 — Networking / LB health checks look good but transactions fail
+A backend HTTP service sits behind an OCI load balancer with health checks configured. Health checks look good, yet customers sometimes see transaction failures. Which option leads to this problem?
+
+A. You are running a TCP-level health check against your HTTP service; the TCP handshake can succeed and report the service up even when the HTTP service has issues.
+B. You are not using regional subnets; with an AD-specific subnet, backend instances have issues when the AD is down.
+C. You misconfigured a DNS "A" record with the wrong IP address.
+D. The iSCSI TCP/IP configuration of the backends' block volume attachments is wrong.
+
+**Your answer: A — CORRECT.** A **TCP** health check only proves the port accepts connections; an **HTTP** check (path + expected status code, optionally a response-body regex) proves the app answers. B would fail health checks outright, C would break all traffic rather than "sometimes", and D is unrelated noise. Capstone tie-in: MyMagnet's LB uses an **HTTP** health check on `/` port 80, which caught the real failure (`CONNECT_FAILED`) during Blocker 2; the internal vLLM/llama LB, by contrast, health-checks kube-proxy on 10256, which only proves the node is up. See [[9. Networking — OCI VCN, DRG, Gateways, Load Balancers]].
+
+### Q44 — Serverless / video uploads processed by AI code, no infrastructure to manage
+Users upload videos; after upload, an AI algorithm should process each video automatically. The team wants to write only AI code and not manage infrastructure for HA, scaling, security and monitoring. Which OCI services meet these requirements?
+
+A. OCI Events, OKE, and OCI Digital Assistant
+B. OCI Object Storage, OCI Events service, and OCI Functions
+C. OCI Resource Manager, OCI Functions, and OCI Events service
+D. OKE, OCI Notifications, and OCI Object Storage
+
+**Your answer: B — CORRECT.** Upload to **Object Storage** → **Events** (object create) → **Functions** runs the AI code, all managed and serverless. OKE (A, D) means managing a cluster; Digital Assistant is a chatbot service; Resource Manager (C) is Terraform/IaC, not part of a runtime pipeline; Notifications (D) sends messages but runs no code. Same pattern as Q10, Q13 and Q16, and the capstone's `lab-capstone-enrich-stack` (whose function calls a self-hosted model). Also in [[practice-1-updated]]. See [[14. Serverless — OCI Functions, Events, API Gateway]].
+
+### Q45 — Networking / routing between two VCNs in the same region (choose TWO)
+Two VCNs in the same region (different compartments, no overlapping CIDRs) need to route to each other. Which TWO are valid options?
+
+A. Create a DRG; attach one VCN; in the other VCN create an LPG; **peer the DRG to the LPG**; route rules point to the DRG and to the LPG.
+B. Same as A, but enable BGP on the DRG for route propagation to the VCN; the other VCN routes to the LPG.
+C. Add an LPG to each VCN, establish a peering connection between the LPGs, and in each VCN route table add a rule to the other VCN via its LPG.
+D. Create a DRG, attach both VCNs, and in each VCN route table add a rule for the other VCN's CIDR with the DRG as next hop.
+
+**Your answer: A, C — PARTLY CORRECT (C right, A wrong). Correct: C, D.** An **LPG peers only with another LPG**; a DRG can never be the far end of an LPG connection, so A and B describe an impossible connection (B also invents BGP between a DRG and a VCN). Valid designs: classic **LPG↔LPG** local peering (C), or the modern **DRG hub** with both VCNs as attachments (D), which scales to many VCNs and is what Oracle now recommends. See [[9. Networking — OCI VCN, DRG, Gateways, Load Balancers]].
