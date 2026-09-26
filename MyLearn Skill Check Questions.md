@@ -984,3 +984,24 @@ C. During the cooldown period, OCI stops collecting monitoring metrics for the i
 D. Autoscaling requires an instance pool as a prerequisite so that it can automatically adjust the number of compute instances in an instance pool.
 
 **Your answer: D — CORRECT** (improved; attempt 1 chose the "newest" option). Autoscaling acts on an **instance pool**. A's order is right except the last word: the **oldest** instance in the fault domain goes first. B is false (metric-based autoscaling uses Monitoring metrics such as CPU and memory; schedule-based is the other type). C is false (cooldown only pauses new scaling actions; metrics keep flowing). Attempt 1's entry has been corrected. See [[3. Compute — OCI Compute, Instance Pools, Load Balancers, Volumes]].
+
+### Q39 — Serverless / which two metrics compute the monthly Functions cost (choose TWO)
+You use Oracle Functions for microservices. Which two monitoring metrics can you use to calculate your total cost for Oracle Functions per month?
+
+A. Network bandwidth used by your functions
+B. Amount of RAM used by your functions
+C. Number of times a function is invoked
+D. Length of time a function runs
+E. Amount of storage used by your functions
+
+**Your answer: C, D — CORRECT.** Functions bills on **invocations** (per million requests) and **execution time** in **GB-seconds** = duration × the function's **configured** memory. The matching metrics are `FunctionInvocationCount` and `FunctionExecutionDuration`. Memory enters via configuration, not measured RAM use, so B is the trap; network (A) and storage (E) aren't Functions billing dimensions. Capstone tie-in: the enrichment function is priced at $0/month in CAPSTONE.md because its invocations and GB-seconds fall inside the free tier. See [[14. Serverless — OCI Functions, Events, API Gateway]].
+
+### Q40 — Databases / Base Database version upgrades
+How are database upgrades handled on OCI Base Database Service?
+
+A. Database upgrades do not introduce any changes to system packages, roles, or privileges.
+B. Database upgrades are rolling operations and do not require downtime for RAC databases.
+C. Database upgrades require downtime, including upgrades for 2-node RAC databases.
+D. Automatic backups created before a database upgrade can always be used to restore the database to the earlier version.
+
+**Your answer: B — INCORRECT. Correct: C.** Already in [[6. Databases — OCI Database, NoSQL, Caching, DR]] nearly verbatim: "Database upgrades are not rolling and does require downtime. This is true for even a two-node RAC database." RAC rolls *patching* and fixed-shape *scaling*, but version upgrades are the exception, which is exactly what B exploits. D is the note's other gotcha: pre-upgrade automatic backups **can't** restore to a pre-upgrade point after the upgrade. A is false: upgrades change packages, roles and privileges (hence "check release notes", e.g. 23ai schema-level grants). The notes had it; the miss was recall under the RAC-rolls-everything instinct.
