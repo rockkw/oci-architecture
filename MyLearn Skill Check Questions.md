@@ -507,7 +507,7 @@ B. During the cooldown period, OCI stops collecting monitoring metrics for the i
 C. When an instance pool scales in, instances are terminated in this order: the number of instances is balanced across availability domains, and then balanced across fault domains. Finally, within a fault domain, the **newest** instance is terminated first.
 D. Autoscaling does not rely on performance metrics such as CPU utilization that are collected by OCI Monitoring service to trigger Autoscaling events.
 
-**Your answer: C — INCORRECT.** Verified directly against Oracle's Autoscaling docs: the real termination order is AD-balance → FD-balance → **oldest** instance terminated first within a fault domain, not newest. This is a single-word distractor swap on an otherwise-correct-sounding option — a real trap pattern for this exam (see [[OCI Architect Professional Tips]]'s fabricated-distractor writeup). **B and D are also false**: cooldown does not stop metric collection (it only suppresses new scaling actions), and autoscaling absolutely does rely on Monitoring-service metrics like CPU utilization as triggers. **A's framing is backwards/confused** — an instance pool is the thing autoscaling is configured against, not a "prerequisite" in the sense implied; not the intended correct answer either. None of the four options as tested is fully correct except C's structural framing (AD→FD→oldest), with only the "newest" word being wrong — **added to [[3. Compute — OCI Compute, Instance Pools, Load Balancers, Volumes]]'s "High availability and scaling" section with the corrected fact.**
+**Your answer: C — INCORRECT.** Verified directly against Oracle's Autoscaling docs: the real termination order is AD-balance → FD-balance → **oldest** instance terminated first within a fault domain, not newest. This is a single-word distractor swap on an otherwise-correct-sounding option — a real trap pattern for this exam (see [[OCI Architect Professional Tips]]'s fabricated-distractor writeup). **B and D are also false**: cooldown does not stop metric collection (it only suppresses new scaling actions), and autoscaling absolutely does rely on Monitoring-service metrics like CPU utilization as triggers. **Correction (2026-09-25, attempt 2 Q38): A is the correct answer.** Autoscaling configurations are attached to an **instance pool**, and an instance pool is documented as the prerequisite; A is the only fully accurate option. The earlier note here called A "backwards" and said no option was fully correct; that was wrong. C fails only on "newest" (the real order ends with the **oldest** instance terminated first), **added to [[3. Compute — OCI Compute, Instance Pools, Load Balancers, Volumes]]'s "High availability and scaling" section with the corrected fact.**
 
 ### Q3 — Serverless / OCI Vault + Oracle Functions
 Your organization is developing serverless applications with Oracle Functions. Many of these functions will need to store state data in a database which will require the use of appropriate credentials. However, your corporate security standards mandate the encryption of secret information, such as database passwords. As a solutions architect, which approach would you direct your team to follow to satisfy this security requirement?
@@ -936,3 +936,51 @@ C. When OCI Network Firewall is enabled, NSG rules are ignored, and only the fir
 D. NSG rules and Network Firewall rules are evaluated independently, and traffic must be allowed by both for it to pass through.
 
 **Your answer: A — INCORRECT. Correct: D.** They're independent layers: NSGs/security lists are enforced at each VNIC (including the firewall's own VNIC), while the Network Firewall is a routed hop (route tables steer traffic to its IP) applying its own policy. A packet must pass every control on its path, so an allow is needed from both and a deny in either drops it. A and B invent a fixed precedence; C is false (enabling the firewall doesn't disable NSGs). Related: the firewall's *internal* order is Decryption → Security → Tunnel Inspection → NAT, which is a different question. **Reading tip:** the question says how the **rules** are evaluated, not which device a packet reaches first. Physical order depends on routing (inbound from the internet usually hits the firewall first; outbound hits the source NSG first; same-subnet traffic may never touch the firewall), but rule evaluation is always independent: both must allow. Same model as AWS (security groups, NACLs and AWS Network Firewall). See [[5. Security — OCI IAM, WAF, Certificates, Vault, Cloud Guard]] and [[9. Networking — OCI VCN, DRG, Gateways, Load Balancers]].
+
+### Q34 — Containers / kubectl access to OKE (choose TWO; repeat of attempt 1 Q1)
+You are configuring access to an OKE cluster using kubectl. Which TWO statements are correct?
+
+A. You cannot set up Cloud Shell access to the cluster if the cluster's Kubernetes API endpoint has a private IP address.
+B. When a cluster's Kubernetes API endpoint has a public IP address, you can access the cluster in Cloud Shell by setting up a kubeconfig file.
+C. Generating an API signing key pair is a mandatory step while setting up cluster access using a local machine if the public key is not already uploaded in the console.
+D. To access the cluster using kubectl, you have to set up a Kubernetes manifest file; the kubeconfig file is by default named config and stored in `$HOME/.manifest`.
+E. To access the cluster using kubectl, you have to set up a Kubernetes configuration file; the kubeconfig file is by default named `config` and stored in `$HOME/.kube`.
+
+**Your answer: A, B — same as attempt 1, where it was verified CORRECT against Oracle's cluster-access docs.** Caveat: E is also a true statement (`$HOME/.kube/config` is the default), so this is a pick-the-two-the-question-targets item; the Cloud Shell endpoint pair (A, B) is what it tests. D is fabricated (`.manifest`). Capstone tie-in: `kubectl` from the laptop worked through the cluster's **public** endpoint (`…:6443`) with `~/.kube/config`. See [[12. Containers — OCI OKE, Container Instances, OCIR]].
+
+### Q35 — Databases / OCI Cache for repeated catalog reads
+Peak shopping events cause high database latency because the app repeatedly reads the same product catalog data. The team wants better responsiveness, fewer repetitive database calls, and minimal operational overhead. Which OCI Cache capability addresses this?
+
+A. OCI Cache stores frequently accessed data in memory for low-latency retrieval and reduced database load.
+B. OCI Cache automatically converts relational databases into distributed analytics platforms.
+C. OCI Cache replaces Object Storage for long-term application data retention.
+D. OCI Cache permanently stores transactional data to eliminate the need for backend databases.
+
+**Your answer: A — CORRECT.** OCI Cache is managed Redis/Valkey: an in-memory cache in front of the database (cache-aside), fully managed, so low operational overhead. B, C and D give a cache jobs it isn't for: analytics conversion, long-term retention, or being the system of record ("permanently", "eliminate" are the tells). See [[6. Databases — OCI Database, NoSQL, Caching, DR]].
+
+### Q36 — Databases / which three scenarios suit ATP Serverless (choose THREE)
+A. An online auction marketplace with 24x7 database usage and unpredictable peaks up to 3× normal activity.
+B. A developer on an internal project needs a database during work hours but not nights or weekends, and must keep costs low.
+C. A manufacturer moving on-premises Oracle E-Business Suite to OCI wants a managed database for the database tier.
+D. A small startup deploying a new e-commerce app, unsure what the load will look like.
+E. A midsize company migrating a legacy on-premises MongoDB database, with much higher workloads on weekends.
+
+**Your answer: A, D, E — likely PARTLY CORRECT (A, D right; E instead of B). Likely correct: A, B, D.** Not from an answer key (not in [[practice-1-updated]]); reasoning from the service: **A** fits auto-scaling (up to 3× base compute, billed only when used); **B** fits **stop/start**: a stopped Serverless database bills storage only, so nights and weekends are nearly free; **D** fits start-small-and-scale-online. **C**: E-Business Suite isn't supported on Autonomous Serverless (use Base Database or Exadata). **E** is plausible (ADB has a MongoDB-compatible API, and auto-scaling handles weekend peaks) but is the weaker fit next to B's classic cost-control case. Capstone tie-in: CAPSTONE.md's cost table prices the ADB at ~$0.68/h running vs ~$4/month stopped, which is B's whole argument. See [[6. Databases — OCI Database, NoSQL, Caching, DR]].
+
+### Q37 — Serverless / which is NOT a good use case for OCI Streaming
+A. Messaging with a pull-based communication model and the ability to feed multiple consumers with the same data independently
+B. Ingesting metric and log data to make critical operational data quickly available for indexing, analysis and visualization
+C. Providing a unified entry point for cloud components to report their life-cycle events for audit, accounting and related activities
+D. Meeting compliance requirements for data to remain unchanged over a long time, so that it can be retrieved for audit purposes
+
+**Your answer: D — CORRECT.** Streaming keeps messages for at most **7 days** (default 24 hours), so it isn't long-term storage. Long-term immutable retention is **Object Storage with retention rules** (or Archive), not a stream. A, B and C are Oracle's own listed Streaming use cases (pull-based messaging with independent consumer groups, metric/log ingestion, and event/activity capture). A reversed question answered correctly this time. See [[14. Serverless — OCI Functions, Events, API Gateway]] and [[4. Storage — OCI Object, Archive, File, Block Storage]].
+
+### Q38 — Compute / what's accurate about Autoscaling (repeat of attempt 1 Q2)
+Many instances sit unused most of the year except Black Friday and Christmas; you present OCI Autoscaling. Which option is accurate?
+
+A. When an instance pool scales in, instances are balanced across ADs, then across fault domains, and within a fault domain the **newest** instance is terminated first.
+B. Autoscaling does not rely on performance metrics such as CPU utilization collected by OCI Monitoring to trigger an autoscaling event.
+C. During the cooldown period, OCI stops collecting monitoring metrics for the instance pool.
+D. Autoscaling requires an instance pool as a prerequisite so that it can automatically adjust the number of compute instances in an instance pool.
+
+**Your answer: D — CORRECT** (improved; attempt 1 chose the "newest" option). Autoscaling acts on an **instance pool**. A's order is right except the last word: the **oldest** instance in the fault domain goes first. B is false (metric-based autoscaling uses Monitoring metrics such as CPU and memory; schedule-based is the other type). C is false (cooldown only pauses new scaling actions; metrics keep flowing). Attempt 1's entry has been corrected. See [[3. Compute — OCI Compute, Instance Pools, Load Balancers, Volumes]].
