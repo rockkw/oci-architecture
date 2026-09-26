@@ -1096,3 +1096,25 @@ C. The user should pass the key version OCID instead of the key OCID.
 D. The developer forgot to specify the region.
 
 **Your answer: C — INCORRECT (attempt 1 picked "region", also wrong). Correct: B.** The URL contains **`-management.kms`**: that's the vault's **management** endpoint (create/rotate/enable keys). `encrypt`/`decrypt`/`generate-data-encryption-key` are data-plane calls that must use the vault's **crypto** endpoint (`…-crypto.kms…`). Read the command first: the endpoint *name* is the tell. The key OCID is correct (key version is optional); the region is implied by the endpoint; plaintext should be base64, not JSON, but that's not what the question's error is about. Already in [[5. Security — OCI IAM, WAF, Certificates, Vault, Cloud Guard]] ("Every vault exposes two distinct, separately-addressed API endpoints").
+
+### Q50 — Databases / Autonomous offering for high-volume OLTP
+An enterprise application needs high-volume OLTP transactions with strict consistency and low latency. Which Autonomous AI Database offering is designed for this?
+
+A. Autonomous AI Lakehouse
+B. Autonomous Data Warehouse
+C. Autonomous JSON Database
+D. Autonomous AI Transaction Processing
+
+**Your answer: D — CORRECT.** OLTP → **Transaction Processing** (row-oriented, many small concurrent transactions). Lakehouse/Data Warehouse are for analytics (columnar, large scans); JSON Database is the document-store flavor. The capstone's ADB is this workload type. See [[6. Databases — OCI Database, NoSQL, Caching, DR]].
+
+### Attempt 2 summary (self-scored from Oracle docs and notes; confirm against the results page)
+
+| Result | Count | Questions |
+|---|---|---|
+| Correct | 32 | 1–4, 9, 10, 12–14, 17, 20, 22–28, 31, 32, 34, 35, 37–39, 41–44, 46, 47, 50 (Q4 and Q20 assume your changed answers saved) |
+| Half right (multi-select) | 5 | 8, 15, 16, 36, 45 |
+| Incorrect | 13 | 5, 6, 7, 11, 18, 19, 21, 29, 30, 33, 40, 48, 49 |
+
+**Estimate: 32/50 = 64% if multi-selects are all-or-nothing (the pass mark is 68%, i.e. 34/50); 34.5/50 = 69% with partial credit.** Borderline either way.
+
+**Weakest areas this attempt:** Security (KMS endpoints, Vault auto-decrypt, CMK assignment, WAF rule types, firewall vs NSG), Observability/Monitoring vocabulary (Interval, MQL parts, agent config vs Cloud Agent), and reversed "NOT valid / expensive or impractical" questions. **Missed in both attempts:** Q18 (Vault auto-decrypt) and Q49 (KMS management vs crypto endpoint). **Fixed since attempt 1:** Q1 (VNIC CLI), Q17 (microservice), Q25 (API Gateway rate limiting), Q38 (autoscaling needs an instance pool). All traps are in [[OCI Architect Professional Tips]] §4.
