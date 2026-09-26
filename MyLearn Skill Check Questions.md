@@ -1107,7 +1107,11 @@ D. Autonomous AI Transaction Processing
 
 **Your answer: D — CORRECT.** OLTP → **Transaction Processing** (row-oriented, many small concurrent transactions). Lakehouse/Data Warehouse are for analytics (columnar, large scans); JSON Database is the document-store flavor. The capstone's ADB is this workload type. See [[6. Databases — OCI Database, NoSQL, Caching, DR]].
 
-### Attempt 2 summary (self-scored from Oracle docs and notes; confirm against the results page)
+### Attempt 2 summary
+
+**Official result: PASSED, 74% (37/50; passing score 68%).** The self-scored estimate below was 64% (32/50), so about 5 answers marked incorrect or half right here were graded correct. Reconcile against MyLearn's *View Feedback* before trusting individual verdicts below.
+
+#### Self-scored estimate (from Oracle docs and notes)
 
 | Result | Count | Questions |
 |---|---|---|

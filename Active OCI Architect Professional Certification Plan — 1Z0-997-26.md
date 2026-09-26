@@ -117,7 +117,7 @@ finish it, and correct this list if any of those three turn out to
 actually match your originally selected answer.
 since they were never actually attempted and self-graded.
 
-Items 18–30 come from **Practice Exam 997-26 attempt 2** (2026-09-25, self-scored ~64% all-or-nothing / ~69% with partial credit vs. 68% pass). Items 13 and 16 were reopened because they were missed in **both** attempts. Every trap is also in [[OCI Architect Professional Tips]] §4, and full question text is in [[MyLearn Skill Check Questions]] (attempt 2 section).
+Items 18–30 come from **Practice Exam 997-26 attempt 2** (2026-09-25, **official result: PASSED, 74%** vs. 68% pass; the self-scored estimate was 64%, so a few of these may turn out to have been graded correct; reconcile with MyLearn's View Feedback). Items 13 and 16 were reopened because they were missed in **both** attempts. Every trap is also in [[OCI Architect Professional Tips]] §4, and full question text is in [[MyLearn Skill Check Questions]] (attempt 2 section).
 
 1. ✅ **COMPLETE** — **Network Firewall four-stage pipeline order** —
    Decryption Rules evaluate *first*, then Security Rules, then Tunnel
