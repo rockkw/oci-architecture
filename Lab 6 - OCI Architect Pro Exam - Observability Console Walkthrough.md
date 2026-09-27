@@ -5,7 +5,7 @@
 
 **Companion references:** [[8. Management and Governance — OCI Resource Manager, OS Management Hub, Observability]] (Monitoring Concepts, MQL syntax, Logging, Connector Hub); [[Active OCI Architect Professional Certification Plan — 1Z0-997-26]] items 18 and 19; the capstone's `terraform/lab-capstone-observability-stack` (which created everything you'll look at here).
 
-**Approach:** read-only exploration of resources that already exist, plus **one throwaway alarm** you create and delete in Part C. Nothing else is changed. Cost: effectively $0.
+**Approach:** read-only exploration of resources that already exist, plus **one throwaway alarm** you create and delete in Part C. Covers all four observability review items: MQL (A–C), logs in/out (D–E), health checks (G), detect vs. prevent (F, H). Nothing else is changed. Cost: effectively $0.
 
 **Where:** region **US West (Phoenix)**, compartment **`sandbox`**.
 
@@ -103,6 +103,30 @@
 
 ---
 
+## Part G — Health checks: what "healthy" actually proves (Q43)
+
+1. Networking → **Load Balancers** → **`mymagnet-lb`** → Backend Sets → **`mymagnet-backend-set`** → **Update health check** (view only, then Cancel):
+   protocol **HTTP**, port **80**, URL path **`/`**, expected status **200**. This check exercises the **app** (nginx → MyMagnet); it's what caught the real `CONNECT_FAILED` outage in the capstone's Blocker 2.
+2. Back in the list, open the load balancer named **`1d709505-3d32-4380-a2f1-516694e371ac`** (auto-named: created by Kubernetes for the `vllm` Service, IP `10.0.2.231`) → its backend set → health check:
+   **HTTP port 10256, path `/healthz`**. That's **kube-proxy on the node**, not the model server. If llama.cpp crashed, this LB would still say healthy (Kubernetes' own readiness probe is what protects the app there).
+3. Compare **Backend Health** on both: OK means "the thing the check probes answered", nothing more.
+
+**What this proves:** a **TCP** check proves only that a port accepts connections; an **HTTP** check with path + status proves the application responds. Always ask *what* the health check actually probes.
+
+---
+
+## Part H — Prevention vs. detection (IAM and quotas)
+
+1. Identity & Security → **Policies** (compartment `sandbox`) → **`mymagnet-backup-policy`**. Read its two statements:
+   - `Allow dynamic-group mymagnet-instance-dyn-grp to manage objects in compartment id … where target.bucket.name = 'mymagnet-backups'`: least privilege, scoped to **one bucket**.
+   - `… to use instance-agent-command-execution-family … where request.instance.id = target.instance.id`: each instance can fetch **only its own** Run Command jobs.
+   Prevention pattern: humans get `read`/`inspect`, automation gets `manage`, conditions narrow the target.
+2. Governance & Administration → **Tenancy Management → Quotas** → **Create Quota** (**don't save**). Type the statement to see the syntax, then **Cancel**:
+   `set compute-core quota standard-a1-core-count to 4 in compartment sandbox`
+   A quota **rejects** any API call that would exceed it, whoever makes it, which is how you'd stop a console shape change from adding OCPUs. Compare with Part F: Audit only *records* the change afterwards.
+
+---
+
 ## Recall questions
 
 1. Which three MQL components are required? Which two are optional?
@@ -111,6 +135,7 @@
 4. Logs must be collected from **on-premises** servers and archived to Object Storage. Which two features?
 5. An alarm never notifies anyone, though its Status shows Firing. What's the first thing to check?
 6. Can OCI Audit stop someone from changing an instance shape?
+7. The load balancer shows every backend healthy, but users get errors. Name the most likely health-check cause.
 
 <details><summary>Answers</summary>
 
@@ -120,6 +145,7 @@
 4. **Agent Configuration** (standalone Unified Monitoring Agent on the hosts) + **Service Connector Hub** (Logging → Object Storage).
 5. The **Notifications** side: the alarm's destination topic and whether the subscription is **confirmed (ACTIVE)**; a PENDING email subscription receives nothing.
 6. No. Audit only records. Prevent with IAM (`read`/`inspect` for humans, `manage instances` only for automation) and compartment quotas; alert with Events → Notifications.
+7. The health check probes something other than the app: a **TCP** check (port open) instead of **HTTP** path + status, or, as with the Kubernetes LB here, a check against kube-proxy (`/healthz` on 10256) rather than the service itself.
 
 </details>
 
