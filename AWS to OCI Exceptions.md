@@ -370,6 +370,43 @@ cert plan as a place where OCI Pro diverges hardest from AWS instincts.)
   separate OCI services with no single combined observability product —
   repeatedly a trap for anyone expecting one unified service.
 
+## Observability / logging
+
+**Sending logs to a SIEM: AWS has managed partner delivery; OCI needs one
+more hop.** The AWS reflex is "point **Kinesis Data Firehose** at Splunk":
+Firehose has built-in destinations for **Splunk (HEC)**, Datadog, New Relic,
+Sumo Logic, Elastic and others, so it's configuration only (endpoint +
+token), no code. **OCI Connector Hub has no third-party SIEM targets.**
+Its targets are OCI services only (Object Storage, Streaming, Functions,
+Notifications, Logging Analytics, Monitoring), so the OCI answer is:
+
+- **Connector Hub → Streaming**, and the SIEM pulls (Streaming is
+  Kafka-API compatible; e.g. Splunk's OCI add-on). ≈ AWS CloudWatch Logs
+  subscription → Kinesis Data Streams.
+- **Connector Hub → Functions**, and a small function pushes to the SIEM
+  API (e.g. Splunk HEC). This last hop is code you write, where AWS
+  Firehose would do it for you.
+- **Connector Hub → Object Storage**, and the SIEM polls the bucket
+  (batch). ≈ CloudTrail/logs → S3 (+ SQS) → SIEM add-on.
+
+Also no OCI equivalent of **AWS Security Lake** (shared OCSF security data
+lake that SIEMs subscribe to); **Cloud Guard** is the closest OCI piece for
+security findings, and SIEM-side connectors for OCI exist but form a smaller
+ecosystem than AWS's. Exam: "export OCI logs/Audit to an existing SIEM" →
+**Connector Hub** (to Streaming or Functions), never a custom VM polling the
+Logging API. Full write-up in
+[[8. Management and Governance — OCI Resource Manager, OS Management Hub, Observability]]
+("Connector Hub to a SIEM").
+
+**Agent-based log shipping maps 1:1.** OCI **agent configuration** (log
+path + parser + destination custom log, targeted at dynamic groups for OCI
+instances or user groups for on-prem hosts) ≈ **CloudWatch agent config**
+(files → log group). Both tail the same files (e.g.
+`/var/log/nginx/access.log`); OCI's Unified Monitoring Agent is
+Fluentd-based. The difference: on OCI instances the agent arrives as an
+**Oracle Cloud Agent plugin** (Custom Logs Monitoring), not a separately
+installed package, and metrics and logs are separate plugins.
+
 ## (carry forward — add further entries here as found)
 
 - VPC → VCN, IAM roles → dynamic groups/policies, Direct Connect → FastConnect,
