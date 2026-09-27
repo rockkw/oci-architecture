@@ -281,6 +281,18 @@ Notes:
   [ADB compute models (backup SKU B95754)](https://docs.oracle.com/en/cloud/paas/autonomous-database/serverless/adbsb/autonomous-compute-models.html).
   All checked on 2026-09-25.
 
+### Finding (2026-09-27, Lab 6): LB sticky sessions don't actually stick
+
+`mymagnet-backend-set` uses **application-cookie** persistence
+(`session_persistence_configuration { cookie_name = "*" }`), which only sticks
+when the application sets a cookie. MyMagnet sets **no cookies**
+(`curl -D -` on `/`, `/api/stats`, `/api/terms`: no `Set-Cookie`), so requests
+round-robin across both instances. Seen live: one UI search spiked CPU on
+**both** instances. Because each instance still has its own SQLite, one page
+load can mix data from both nodes. Fixes: switch to **LB-cookie** persistence
+(`lb_cookie_session_persistence_configuration`, the LB inserts its own cookie),
+or finish Phase 2 so both nodes share the database (the real fix).
+
 ## Deferred
 
 Items blocked during autonomous work. Each needs a person to run or approve it.
