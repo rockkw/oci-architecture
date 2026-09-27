@@ -1,6 +1,7 @@
 # Lab 6 - OCI Architect Pro Exam - Observability Console Walkthrough
 
 #7_mystudy #OCI  
+**Status: ✅ COMPLETED 2026-09-27** (all Parts A–H walked through live in the Console; results below).  
 **Plan item:** Close the Observability gaps from Practice Exam attempt 2 (Q6 Interval, Q8 MQL required/optional parts, Q29 agent configuration vs. Cloud Agent) by doing each thing by hand in the Console.
 
 **Companion references:** [[8. Management and Governance — OCI Resource Manager, OS Management Hub, Observability]] (Monitoring Concepts, MQL syntax, Logging, Connector Hub); [[Active OCI Architect Professional Certification Plan — 1Z0-997-26]] items 18 and 19; the capstone's `terraform/lab-capstone-observability-stack` (which created everything you'll look at here).
@@ -96,7 +97,8 @@
 ## Part F — Audit (who changed what)
 
 1. ☰ → **Observability & Management → Logging → Audit** (or Identity & Security → Audit).
-2. Compartment `sandbox`, date range **2026-09-24**, search keyword **`UpdateInstance`**.
+2. Compartment `sandbox`, custom time range **2026-09-24 15:00–15:10 UTC**. Plain keywords fail in the search box (it always sends query-language text: `GSL: mismatched input … expecting {CAST, SEARCH, SET}`), so switch to **Advanced** and use:
+   `search "<compartment OCID>/_Audit" | where data.eventName = 'UpdateInstance'`
 3. Open the event from the fault-domain move of `mymagnet-instance-1`: principal (the Terraform API user), source IP, timestamp, and request details.
 
 **What this proves:** Audit records every API call (Console, CLI, Terraform) automatically for 365 days, but it's **detective only**. Prevention = IAM least privilege, compartment quotas; fast response = Events → Notifications.
@@ -126,6 +128,21 @@
    A quota **rejects** any API call that would exceed it, whoever makes it, which is how you'd stop a console shape change from adding OCPUs. Compare with Part F: Audit only *records* the change afterwards.
 
 ---
+
+## Results (walked through live, 2026-09-27)
+
+| Part | What we saw |
+|---|---|
+| A | 7 metric streams in `sandbox` (2 MyMagnet VMs, 3 OKE nodes, `bastion-target-instance`, `nsg-test-instance`). Dimension filters combine with AND; FD-1 = instance-1 + 2 OKE nodes, FD-2 = instance-2 + 3 others. Aggregate on FD-1 memory: ~31/25/10% → one line at ~22% (Mean). `instancePoolId` = Default for every instance, OKE nodes included. |
+| B | Hand-written MQL: `[1m]`→`[5m]` smoothed a 10% spike to ~4.5%; `=~ "mymagnet-*"` fuzzy match; `.grouping()` and `.groupBy(faultDomain)` results agreed; P90 ≈ 2× mean; **no interval = parser error**. A UI search spiked CPU on **both** instances → LB application-cookie stickiness doesn't stick (MyMagnet sets no cookie; see `terraform/CAPSTONE.md`). |
+| C | `mymagnet-instance-cpu`: 2 metric streams, 10-min trigger delay, split notifications. Test alarm `lab6-test-alarm` (`> 0`) went FIRING ~4 min after creation and emailed `Alarm: OK_TO_FIRING | CRITICAL | Lab6 Alarm CPU`; now **disabled**, kept for demos. |
+| D | nginx access logs (~8 events/min baseline = LB health checks). Agent configuration: dynamic-group host group (user groups empty = how on-prem hosts would be added), log path `/var/log/nginx/access.log`, **APACHE2** parser. Cloud Agent plugins: Custom Logs Monitoring = logs, Compute Instance Monitoring = metrics. |
+| E | Connector `mymagnet-log-archive`: batch 100 MB / 420000 ms (7 min); objects `<connector OCID>/<start>_<end>.0.log.gz`, ~3 KiB each (time-based flush), one 14 KiB file where real traffic happened. |
+| F | Two `UpdateInstance` events, 2026-09-24 15:01:28 and 15:03:44 UTC, by Rock Whitney from 76.155.1.207 via `Oracle-GoSDK … darwin/arm` (Terraform). **`stateChange`**: `faultDomain` FAULT-DOMAIN-2 → FAULT-DOMAIN-1, `lifecycleState` STOPPING. |
+| G | `mymagnet-lb`: HTTP `/` port 80, status 200, body regex `.*`, interval 30 s, timeout 3 s, 3 retries (~90 s to unhealthy). Kubernetes LB (`1d709505…`, 10.0.2.231 private): **3 backends OK** = every worker node (NodePort), checked via kube-proxy, so it stays green even if the model pod is down; the pod's readiness probe is the real guard. LB access/error service logs are *not enabled*. |
+| H | `mymagnet-backup-policy` shows the least-privilege levers (subject, verb, resource type, `where`). Creating a quota from Phoenix failed: **"Please go to your home region to execute Quota operations"** (quotas, like IAM, are home-region only). Nothing was created. A 4-core A1 quota would have blocked new capacity: `sandbox` already runs ~10 A1 cores. |
+
+Notes updated from this lab: [[8. Management and Governance — OCI Resource Manager, OS Management Hub, Observability]] (dimensions, aggregation, hand-written MQL table, alarms hands-on, custom logs and agent configuration, Connector Hub to a SIEM), [[AWS to OCI Exceptions]] (SIEM delivery, agent log shipping).
 
 ## Recall questions
 

@@ -333,13 +333,13 @@ Items 18–30 come from **Practice Exam 997-26 attempt 2** (2026-09-25, **offici
     Gateway]]'s "What a microservice actually is — a definitional trap,
     not an OCI-specific fact" section.
 
-18. **Monitoring Query Language: Interval vs. the other parts.** Missed
+18. ✅ **COMPLETE 2026-09-27** — practiced hands-on in [[Lab 6 - OCI Architect Pro Exam - Observability Console Walkthrough]] (Parts A–C: dimensions, hand-written MQL incl. the no-interval parser error, alarms). **Monitoring Query Language: Interval vs. the other parts.** Missed
     attempt 2 Q6 (picked Dimension for the aggregation window) and half of
     Q8 (thought Interval was optional). `metric[interval]{dimensions}
     .groupingFunction.statistic`: **required = metric, interval,
     statistic**; optional = dimensions and grouping function. Resolution
     ≠ Interval. See [[8. Management and Governance — OCI Resource Manager, OS Management Hub, Observability]].
-19. **Logs from on-premises hosts: Agent Configuration + Service
+19. ✅ **COMPLETE 2026-09-27** — practiced hands-on in [[Lab 6 - OCI Architect Pro Exam - Observability Console Walkthrough]] (Parts D–E: agent configuration host groups incl. user groups for on-prem, Cloud Agent plugins, Connector Hub archive). **Logs from on-premises hosts: Agent Configuration + Service
     Connectors, not "Cloud Agent Plugin".** Missed attempt 2 Q29. Cloud
     Agent is for OCI instances; on-prem uses the standalone Unified
     Monitoring Agent configured by an Agent Configuration; Connector Hub
