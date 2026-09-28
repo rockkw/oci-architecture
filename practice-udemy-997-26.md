@@ -455,3 +455,15 @@ D. Create an automated OCI Notification subscription that runs an Oracle Functio
 **Answer: likely A** (unverified: exact OCI name for the missing-data setting)
 
 ---
+
+### Q38
+Which OCI resource type is NOT natively supported as a direct member of an OCI Full Stack Disaster Recovery Protection Group?
+
+A. OCI Block Volume Groups, coordinating automated replication state transitions.
+B. OCI VM Database Systems, orchestrating automated active-standby role failovers.
+C. OCI Public Load Balancers, managing automated backend server traffic redirection.
+D. OCI Autonomous Databases, enabling automated cross-region database instance switchovers.
+
+**Answer: ⚠️ flawed question.** Per Oracle's current docs, all four are supported member types (volume groups, Base Database Service, load balancers, Autonomous Database). The key probably expects C (older question?).
+
+---
