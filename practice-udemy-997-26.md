@@ -479,3 +479,15 @@ D. The Quota policy rule failed due to a regional service limit restriction, whi
 **Answer: B**
 
 ---
+
+### Q40
+An administrator wants to automatically identify security misconfigurations and enforce security posture policies across their OCI tenancy's target compartments. Which OCI security service can automatically detect these issues and execute automated remediation actions using responder recipes?
+
+A. OCI Security Zones, because it strictly prevents creation of non-compliant resources inside the compartments.
+B. OCI Vulnerability Scanning Service, because it automatically patches OS vulnerabilities on your compute hosts.
+C. OCI Network Firewall, because it performs deep packet inspection and blocks unauthorized network traffic paths.
+D. OCI Cloud Guard, because it monitors the environment and uses responder recipes to automatically correct flaws.
+
+**Answer: D**
+
+---
