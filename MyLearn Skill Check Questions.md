@@ -1244,3 +1244,6 @@ Options: A. FastConnect (partner) primary + Site-to-Site VPN backup on the same 
 
 ### U1-Q28 — File Storage replication failover: make the target's data writable
 **Your answer: C — INCORRECT. Correct: D (likely key).** A replication target is read-only and can't be exported; there's no access-mode toggle (C invented). Failover: **clone the last applied replication snapshot** to a new file system and **export the clone**. Deleting the replication also frees the target (A garbles this). Reverse replication (B) is for failback. Not doc-verified this session. See [[4. Storage — OCI Object, Archive, File, Block Storage]].
+
+### U1-Q29 — Stopping a Globally Distributed Autonomous Database (choose TWO)
+**Your answer: B, D — PARTLY CORRECT (B right, D wrong). Likely correct: B, E.** Stopping stops shards **and** catalog: ECPU billing halts (B), in-flight work ends (E); the catalog does not stay online (D contradicts B); storage keeps billing (A, same as the capstone ADB: ~$0.68/h running vs ~$4/month stopped); no connection queuing (C). Tell: B and D can't both be true. See [[6. Databases — OCI Database, NoSQL, Caching, DR]].

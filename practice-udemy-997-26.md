@@ -345,3 +345,16 @@ D. Create a clone of the last applied replication snapshot on the target file sy
 **Answer: D** (A is a garbled version of "delete the replication"; confirm with the Udemy explanation)
 
 ---
+
+### Q29
+An enterprise database administrator is looking to optimize costs for a Globally Distributed Autonomous AI Database environment used for reporting. The database consists of six shards and a central catalog deployed on Dedicated Exadata Infrastructure. The administrator decides to programmatically stop the distributed database during weekends when no workloads are running. Which two statements correctly describe the financial and operational effects of stopping this distributed database? (Choose two.)
+
+A. Storage billing for both database shards and the catalog is completely suspended while the distributed database is stopped.
+B. ECPU compute billing is halted for all database shards and the central catalog while the distributed database is stopped.
+C. The Shard Directors continue to accept and queue inbound client connection requests until the distributed database is restarted.
+D. The central catalog remains online and fully accessible for metadata queries while the database shards are stopped.
+E. All in-flight database transactions and active queries are stopped immediately across both shards and the central catalog.
+
+**Answer: B, E**
+
+---
