@@ -131,6 +131,7 @@ come from the source entry.
 
 | Trap (the wrong-but-plausible option) | Reality / correct answer | Seen in | Details |
 | --- | --- | --- | --- |
+| OCI Cache lacks in-transit encryption, so add **client-side encryption** | OCI Cache encrypts **at rest** (Oracle-managed keys) and **requires TLS in transit** natively | Udemy exam 1 Q23 (missed) | [[6. Databases — OCI Database, NoSQL, Caching, DR]] |
 | Base Database **LVM (fast provisioning)** storage can scale freely / be **converted to ASM in place** | LVM scaling is capped by the **initial storage size** chosen at provisioning; no in-place LVM→ASM. Beyond the cap: **new ASM DB system + migrate** | Udemy exam 1 Q13 (missed) | [[6. Databases — OCI Database, NoSQL, Caching, DR]] |
 | **Compute model and shape** (or name of superuser) as one of the three ADB provisioning inputs | **Deployment type, network access type, workload type.** Compute model and superuser are real inputs, just not the three asked for | SC ADB Q1 **(missed twice)** | [[6. Databases — OCI Database, NoSQL, Caching, DR]] |
 | "Azure HPC" / "Dedicated Exadata infrastructure in AWS" as ADB deployment options | Fabricated. Real four: Serverless, Dedicated, Exadata Cloud@Customer, Dedicated Region Cloud@Customer | SC ADB Q2 | [[6. Databases — OCI Database, NoSQL, Caching, DR]] |

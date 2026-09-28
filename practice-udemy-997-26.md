@@ -273,3 +273,15 @@ D. Submit a service request to Oracle Support to merge Subscription B's credits 
 **Answer: A**
 
 ---
+
+### Q23
+A healthcare application must meet strict compliance standards regarding data protection, requiring that all healthcare information be encrypted both when stored on disk and during transmission across networks. The application team plans to deploy an OCI Cache with Redis cluster to cache user session profiles containing sensitive health data. As a solutions architect, which approach must you select to ensure full compliance with these encryption mandates?
+
+A. Rely on OCI Cache's built-in capabilities, which automatically enforce encryption-at-rest using Oracle-managed keys and require TLS encryption for all data-in-transit.
+B. Deploy the OCI Cache cluster inside a public subnet and use custom iptables rules to encrypt all data payloads before they reach the cluster.
+C. Implement client-side application encryption layers because OCI Cache only supports encryption-at-rest and does not provide native transit encryption.
+D. Use OCI Vault to manually generate an asymmetric key pair and configure the application to pass this key in the connection string of every Redis command.
+
+**Answer: A**
+
+---

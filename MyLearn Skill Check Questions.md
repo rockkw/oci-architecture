@@ -1226,3 +1226,6 @@ Options: A. FastConnect (partner) primary + Site-to-Site VPN backup on the same 
 
 ### U1-Q22 — Organization Management: move a joined child tenancy onto the parent's subscription
 **Your answer: A — CORRECT.** In OCI Organization Management the parent tenancy's **subscription mapping** assigns a child tenancy's consumption to a chosen subscription (here A), including existing children that joined by invitation; B's own credits stay with B. B (migrate resources), C (IAM "billing role") and D (support merge; "only new children") are distractors. See [[8. Management and Governance — OCI Resource Manager, OS Management Hub, Observability]] ("Organization Management").
+
+### U1-Q23 — OCI Cache encryption at rest and in transit
+**Your answer: C — INCORRECT. Correct: A.** OCI Cache encrypts at rest (Oracle-managed keys) and requires TLS in transit natively. C's premise ("no native transit encryption") is false; B (public subnet + iptables) and D (keys in connection strings) are nonsense. Note 6's OCI Cache section lacked encryption facts; added. See [[6. Databases — OCI Database, NoSQL, Caching, DR]].
