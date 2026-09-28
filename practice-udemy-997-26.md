@@ -285,3 +285,15 @@ D. Use OCI Vault to manually generate an asymmetric key pair and configure the a
 **Answer: A**
 
 ---
+
+### Q24
+A financial services institution deploys an enterprise application on OCI that utilizes multiple dependent block volumes for database storage, logs, and application configuration. To satisfy regulatory disaster recovery constraints, the company requires a solution that guarantees point-in-time consistency across all these volumes during a replication event. Furthermore, the recovery point objective (RPO) requires these volumes to be backed up to a secondary remote OCI region at least once every 24 hours with minimal management overhead. Which approach should the architect select to meet these resiliency requirements?
+
+A. Configure individual, manual cron-based snapshot scripts on each compute instance to back up each block volume independently and copy them to the remote region using the OCI CLI.
+B. Establish a real-time OCI File Storage service mount across both regions using a remote VCN peering connection to synchronously mirror file system blocks at the OS level.
+C. Implement an OCI Data Guard configuration between the compute instances to replicate block sector changes over an encrypted TLS connection directly to an object storage bucket located in the destination region.
+D. Group the dependent block volumes into a single OCI Volume Group and apply a backup policy that automatically executes cross-region replication of the volume group backups to the designated secondary region daily.
+
+**Answer: D**
+
+---

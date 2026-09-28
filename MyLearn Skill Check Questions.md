@@ -1229,3 +1229,6 @@ Options: A. FastConnect (partner) primary + Site-to-Site VPN backup on the same 
 
 ### U1-Q23 — OCI Cache encryption at rest and in transit
 **Your answer: C — INCORRECT. Correct: A.** OCI Cache encrypts at rest (Oracle-managed keys) and requires TLS in transit natively. C's premise ("no native transit encryption") is false; B (public subnet + iptables) and D (keys in connection strings) are nonsense. Note 6's OCI Cache section lacked encryption facts; added. See [[6. Databases — OCI Database, NoSQL, Caching, DR]].
+
+### U1-Q24 — Crash-consistent cross-region backups of several dependent block volumes
+**Your answer: D — CORRECT.** A **volume group** gives point-in-time (crash-consistent) backups/clones/replication across all its volumes; a **backup policy** with a **cross-region copy** destination automates the daily remote copy. A (per-volume scripts) loses consistency and adds overhead; B (FSS across regions, synchronous) isn't a thing; C: Data Guard is database redo replication, not block volumes. See [[4. Storage — OCI Object, Archive, File, Block Storage]].
