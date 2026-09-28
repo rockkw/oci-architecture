@@ -411,6 +411,14 @@ connectors instead of Bedrock/SageMaker. Full comparison table in
 [[8. Management and Governance — OCI Resource Manager, OS Management Hub, Observability]]
 ("OCI Search with OpenSearch — console location, AI models, and comparisons").
 
+**Two Kafka-flavoured services, where AWS has two clearly separate ones.**
+OCI **Streaming** ≈ Kinesis Data Streams (serverless, 1 MB/s write per
+partition, 7-day max retention) **but it also accepts Kafka clients**
+(partial Kafka API), so "move a Kafka app with minimal changes" can be
+plain Streaming. **OCI Streaming with Apache Kafka** ≈ **Amazon MSK** (real
+managed Kafka clusters, 100% compatible, no retention limit). Details in
+[[14. Serverless — OCI Functions, Events, API Gateway]].
+
 **Agent-based log shipping maps 1:1.** OCI **agent configuration** (log
 path + parser + destination custom log, targeted at dynamic groups for OCI
 instances or user groups for on-prem hosts) ≈ **CloudWatch agent config**
