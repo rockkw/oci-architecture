@@ -1217,3 +1217,6 @@ Options: A. FastConnect (partner) primary + Site-to-Site VPN backup on the same 
 
 ### U1-Q19 — Requirements for automatic MEK rotation
 **Your answer: B — CORRECT.** Automatic (scheduled) rotation needs the key in a **virtual private vault**, interval **60–365 days**. Default vault (D), BYOK-only/exactly 90 days (C) and RSA-only (A) are distractors. Rotation facts weren't in Note 5; added along with a finite-lists row in Tips. See [[5. Security — OCI IAM, WAF, Certificates, Vault, Cloud Guard]].
+
+### U1-Q20 — Connector Hub authorization errors after a compartment reorganization
+**Your answer: D — CORRECT.** A connector acts as its **own principal**; it needs policy to read from the source and write to the target (e.g. `Allow any-user to use stream-push in compartment <Security> where all {request.principal.type='serviceconnector', request.principal.compartment.id='<connector compartment>'}`, or a dynamic group of the connector), scoped least-privilege. A reorganization changes compartment OCIDs/paths in policies, breaking it. A over-privileges a human (and the connector doesn't use its creator's identity); B bypasses the connector; C is fabricated. Same principal model as the capstone's `sch_to_bucket` policy (`request.principal.type='serviceconnector'`). See [[8. Management and Governance — OCI Resource Manager, OS Management Hub, Observability]].

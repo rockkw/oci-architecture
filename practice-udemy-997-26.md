@@ -237,3 +237,15 @@ D. The key must belong to a default vault, and the next rotation date must be sc
 **Answer: B**
 
 ---
+
+### Q20
+A financial services company uses an OCI Connector Hub to route operational logs from an Exadata Database Service instance located in a Production compartment to an OCI Streaming pool in a Security compartment for third-party analysis. After a recent compartment reorganization, the connector stopped transferring logs, and operators observed authorization errors in the connector's metric data. The security policy mandates that minimum necessary privileges must be maintained across these distinct administrative boundaries. Which modification should the architect direct the team to perform to restore log integration?
+
+A. Grant full tenancy-level administrator access to the user account who originally created the OCI Connector Hub resource to bypass all compartment checks.
+B. Add an IAM policy that allows the source database instances to directly push log arrays into the target compartment's streaming pool via instance principals.
+C. Update the OCI Search service index configurations across both compartments to automatically map the streaming pool's resource ID to the database's log group identifier.
+D. Configure an IAM policy that explicitly permits the specific connector resource or its dynamic group to read logs from the source compartment and produce messages to the target streaming pool.
+
+**Answer: D**
+
+---
