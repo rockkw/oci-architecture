@@ -151,3 +151,15 @@ D. Create an OCI Alarm Suppression rule specifying the exact alarm names and the
 **Answer: D**
 
 ---
+
+### Q13
+Your enterprise database team has deployed several single-node development databases in Oracle Cloud Infrastructure (OCI) Base Database Service. They selected the 'fast provisioning' option, which uses Logical Volume Manager (LVM) as the storage management software instead of the standard Grid Infrastructure with Automatic Storage Management (ASM). Over time, these databases have grown significantly, and the team needs to scale up the storage beyond the limit determined by the initial provisioning size. As a solutions architect, which constraint should you explain to your team regarding LVM storage scaling, and what is the correct migration path?
+
+A. LVM allows online scaling of block volumes up to 80 TB regardless of the initial storage size, but it requires a database reboot to expand the local ext4 file system.
+B. The storage management software can be dynamically converted from LVM to Grid Infrastructure with ASM via the OCI Console, which will instantly lift the storage scaling boundaries without any downtime.
+C. LVM storage can only be scaled up if the virtual machine DB system is migrated to a high-density bare metal shape, because block volume resizing is completely unsupported on LVM-based VMs.
+D. Storage scaling under LVM is constrained by the initial storage size specified during provisioning; to exceed this limit, they must provision a new DB system using ASM and migrate.
+
+**Answer: D**
+
+---

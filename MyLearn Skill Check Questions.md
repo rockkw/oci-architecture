@@ -1196,3 +1196,6 @@ Options: A. FastConnect (partner) primary + Site-to-Site VPN backup on the same 
 
 ### U1-Q12 — Mute alarm notifications during a maintenance window, keep evaluating
 **Your answer: D — CORRECT.** **Alarm suppression** (per alarm, with a time window) stops notifications while the alarm keeps evaluating and metrics keep flowing: exactly "unbroken visibility, no dispatch". A (disable) stops evaluation (what we did to `lab6-test-alarm` in Lab 6, for the opposite reason); B changes the alarm logic and risks leaving it wrong; C (delete subscriptions) breaks every alarm on the topic and needs reconfirmation. The Suppression field appeared on the `mymagnet-instance-cpu` details page in Lab 6 Part C. See [[8. Management and Governance — OCI Resource Manager, OS Management Hub, Observability]].
+
+### U1-Q13 — Base Database fast provisioning (LVM) storage ceiling
+**Your answer: A — INCORRECT. Correct: D.** Fast provisioning = LVM (single-node dev/test); scaling is capped by the size chosen at provisioning; no in-place LVM→ASM conversion (B fabricated); beyond the cap, new ASM DB system + migrate. A's "80 TB regardless" and C's "unsupported on VMs" are invented. Note 6's LVM/ASM section lacked this; added. See [[6. Databases — OCI Database, NoSQL, Caching, DR]].
