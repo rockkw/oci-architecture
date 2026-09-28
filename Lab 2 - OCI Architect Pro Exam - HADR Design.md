@@ -125,6 +125,14 @@ This is the part most designs leave vague, and exactly what the plan item is cal
 
 ---
 
+**Member DR properties (Udemy exam 1 Q21, missed):** when a compute
+instance is added to a DR Protection Group as a **moving instance**, its
+member **DR properties** define the standby-region launch: destination
+**VCN/subnet**, **shape** (can be smaller/cheaper than primary), fault
+domain/capacity, and volume mappings. That's the native answer to "launch in
+a pre-defined subnet with a cost-optimized shape"; don't reach for IAM
+policies, instance pools or custom Functions.
+
 ## 5. Validating the design without actually disrupting production: DR Drill and Precheck
 
 Two Full Stack DR concepts worth designing in from the start, not bolted on later:

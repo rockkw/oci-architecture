@@ -249,3 +249,15 @@ D. Configure an IAM policy that explicitly permits the specific connector resour
 **Answer: D**
 
 ---
+
+### Q21
+An enterprise uses OCI Full Stack Disaster Recovery (FSDR) to orchestrate cross-region failover of its production application from Region A to Region B. The application runs on OCI Compute instances, with their associated boot and block volumes actively replicated to the standby region. The operations team requires that when these instances are launched in Region B during a failover, they must mount to a pre-defined subnet and use a cost-optimized compute shape. Which approach should the solutions architect select to satisfy these specific resource mapping requirements?
+
+A. Apply specific OCI compartment-level IAM policies that enforce default compute shapes and virtual cloud network constraints for instances created in the target standby region.
+B. Set up an OCI Compute Instance Pool in the standby region with the desired configurations, and configure it as a non-managed Protection Group resource.
+C. Develop a custom OCI Function that calls core compute APIs to dynamically override instance launch metadata, and register it as a plan pre-check step.
+D. Configure the target virtual cloud network, subnet, and compute shape within the DR properties of the compute instance member in the DR Protection Group.
+
+**Answer: D**
+
+---
