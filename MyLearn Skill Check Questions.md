@@ -1232,3 +1232,6 @@ Options: A. FastConnect (partner) primary + Site-to-Site VPN backup on the same 
 
 ### U1-Q24 — Crash-consistent cross-region backups of several dependent block volumes
 **Your answer: D — CORRECT.** A **volume group** gives point-in-time (crash-consistent) backups/clones/replication across all its volumes; a **backup policy** with a **cross-region copy** destination automates the daily remote copy. A (per-volume scripts) loses consistency and adds overhead; B (FSS across regions, synchronous) isn't a thing; C: Data Guard is database redo replication, not block volumes. See [[4. Storage — OCI Object, Archive, File, Block Storage]].
+
+### U1-Q25 — Automatic OCIR image scanning on push and on new CVEs
+**Your answer: A — CORRECT.** **Vulnerability Scanning Service container image targets** point at OCIR repositories (or a whole compartment, so new repos are covered automatically); images are scanned on push and re-scanned as new CVEs are published. B, C and D are custom builds when a native service exists (the "heavier/manual option" trap). See [[12. Containers — OCI OKE, Container Instances, OCIR]] and [[5. Security — OCI IAM, WAF, Certificates, Vault, Cloud Guard]].

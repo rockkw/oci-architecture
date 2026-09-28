@@ -297,3 +297,15 @@ D. Group the dependent block volumes into a single OCI Volume Group and apply a 
 **Answer: D**
 
 ---
+
+### Q25
+Your enterprise deploys microservices to an OCI Kubernetes Engine (OKE) cluster, pulling images from private repositories in the OCI Container Registry (OCIR). The security team requires all container images to be automatically scanned for security vulnerabilities whenever they are pushed, and re-scanned automatically whenever new definitions are added to the Common Vulnerabilities and Exposures (CVE) database. They also insist that the operations team must minimize manual configuration for new repositories. As a solutions architect, which approach should you recommend to implement this security requirement?
+
+A. Configure OCI Vulnerability Scanning service targets for repositories, ensuring local image scanning remains enabled, and rely on automatic re-scans when new CVEs are added.
+B. Deploy a custom OCI Events rule triggered by push events to invoke an Oracle Function that pulls the image, runs local scanning, and writes results to Object Storage.
+C. Configure your OCI DevOps build pipeline to execute a custom docker scan script using a shell stage, and then manually publish the exported report to active OKE nodes.
+D. Implement a Kubernetes cronjob within OKE that runs hourly to pull down new images, run open-source scanning tools inside a pod, and upload reports to OCI Registry.
+
+**Answer: A**
+
+---
