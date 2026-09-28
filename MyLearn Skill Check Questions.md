@@ -1283,3 +1283,6 @@ Options: A. FastConnect (partner) primary + Site-to-Site VPN backup on the same 
 
 ### U1-Q41 — ZPR policy: security attribute with no namespace
 **Your answer: D — INCORRECT. Correct: B.** Enabling ZPR creates the default **`oracle-zpr`** security attribute namespace, and a ZPR policy that omits the namespace assumes it. Already in your notes: [[Lab 5 - OCI Architect Pro Exam - Zero Trust Packet Routing]] and [[5. Security — OCI IAM, WAF, Certificates, Vault, Cloud Guard]] (the default `oracle-zpr` namespace); the "omitted namespace → default" consequence is the new piece. Security attributes aren't tags (D).
+
+### U1-Q42 — OCI Cache: evict least-recently-used keys at the memory limit
+**Your answer: D — CORRECT.** Redis **eviction policy** (`maxmemory-policy`: `allkeys-lru` evicts any key by LRU, `volatile-lru` only keys with a TTL), set via the OCI Cache cluster's configuration. B (FLUSHALL wipes everything), C (autoscaling doesn't exist for OCI Cache, same as Q35's D) and A (Storage Gateway is file-to-Object-Storage, not a cache tier) are distractors. See [[6. Databases — OCI Database, NoSQL, Caching, DR]].

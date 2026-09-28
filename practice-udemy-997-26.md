@@ -503,3 +503,15 @@ D. The security attribute is evaluated as a global free-form tag instead of an i
 **Answer: B**
 
 ---
+
+### Q42
+A data analytics platform uses an OCI Cache with Redis cluster to cache complex database query responses. Over time, the volume of cached data is projected to exceed the total memory capacity allocated to the cluster nodes, which could lead to out-of-memory errors if not managed correctly. The business requires that the cache automatically removes the least recently used keys when memory limits are reached to maintain continuous performance. Which strategy should the solutions architect implement to handle this constraint?
+
+A. Enable OCI Storage Gateway to automatically offload older cache data from memory into a standard Object Storage bucket.
+B. Write an OCI Function triggered by OCI Events that executes a FLUSHALL command whenever cluster memory utilization crosses 90 percent.
+C. Set up an OCI Autoscaling policy that automatically increases the memory allocation per node without restarting the Redis processes.
+D. Configure the cluster with an explicit Redis eviction policy such as volatile-lru or allkeys-lru within the OCI Cache cluster settings.
+
+**Answer: D**
+
+---
