@@ -1295,3 +1295,6 @@ Options: A. FastConnect (partner) primary + Site-to-Site VPN backup on the same 
 
 ### U1-Q45 — Which is NOT an OCIR image retention criterion (reversed)
 **Your answer: C — CORRECT.** OCIR retention policies select by **days since last pull** (B), **days since last tagged / no newer tag** (A), with **exempt tags** excluded (D). There's no storage-size criterion (C). Related Tips row: global vs local retention policies, 48-hour undelete. See [[12. Containers — OCI OKE, Container Instances, OCIR]].
+
+### U1-Q46 — Resize a block volume with cross-region replication enabled
+**Your answer: A — INCORRECT. Correct: B.** A volume can't be resized while replication is on: **disable replication (the replica is deleted) → resize → re-enable replication** (a new full replica is built). A (clone/delete/recreate) is needlessly destructive; C ("pause") and D (automatic replica resize) invent features. See [[4. Storage — OCI Object, Archive, File, Block Storage]].

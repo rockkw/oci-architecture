@@ -190,6 +190,7 @@ come from the source entry.
 
 | Trap (the wrong-but-plausible option) | Reality / correct answer | Seen in | Details |
 | --- | --- | --- | --- |
+| Resize a replicated block volume by **pausing** replication or letting it **auto-resize the replica** | **Disable replication** (replica deleted) → resize → **re-enable** (new full replica) | Udemy exam 1 Q46 (missed) | [[4. Storage — OCI Object, Archive, File, Block Storage]] |
 | Instance-pool scale-in terminates the **newest** instance first | AD-balance → FD-balance → **oldest** first | Att 1 Q2 (missed); Att 2 Q38 (correct: the accurate option is "autoscaling requires an instance pool") | [[3. Compute — OCI Compute, Instance Pools, Load Balancers, Volumes]] |
 | Cooldown stops metric collection; autoscaling doesn't use Monitoring metrics | Cooldown only suppresses new scaling actions; autoscaling triggers on Monitoring metrics such as CPU | Att 1 Q2 | [[3. Compute — OCI Compute, Instance Pools, Load Balancers, Volumes]] |
 | "Encryption at rest already covers it" | **Confidential computing** encrypts memory *in use*, the gap at-rest/in-transit encryption leaves | Note 3 | [[3. Compute — OCI Compute, Instance Pools, Load Balancers, Volumes]] |

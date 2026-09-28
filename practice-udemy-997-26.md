@@ -551,3 +551,15 @@ D. Deleting any images that lack specific version identifiers that were explicit
 **Answer: C**
 
 ---
+
+### Q46
+What action is required to resize an Oracle Cloud Infrastructure (OCI) block volume that has active cross-region replication enabled?
+
+A. You must create a clone of the block volume, resize the clone, delete the original block volume, and then recreate the replication.
+B. You must disable replication (which deletes the replica volume), resize the block volume, and then re-enable replication.
+C. You must pause the replication process, resize the block volume, and then resume replication to automatically resize the replica.
+D. You must resize the source block volume directly, which triggers an automated asynchronous resize of the destination replica.
+
+**Answer: B**
+
+---
