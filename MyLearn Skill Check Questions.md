@@ -1202,3 +1202,6 @@ Options: A. FastConnect (partner) primary + Site-to-Site VPN backup on the same 
 
 ### U1-Q14 — Which is NOT a Container Instances capability (reversed)
 **Your answer: C — CORRECT.** Container Instances has **no built-in horizontal autoscaling**: each instance has a fixed shape (OCPU/memory) and you create more instances yourself. For autoscaling containers use **OKE** (HPA/cluster autoscaler, or Virtual Nodes). A (no VMs to manage), B (dedicated shape resources) and D (VM-level/hypervisor isolation) are real. Note 12's Container Instances section covers A, B, D. See [[12. Containers — OCI OKE, Container Instances, OCIR]].
+
+### U1-Q15 — Alarm notification storm: which two are expensive/impractical (reversed)
+**Your answer: B, C — CORRECT.** B (script deleting/recreating the alarm every 60 s) destroys history and state; C (per-second polling of raw logs in external storage) is costly and rebuilds monitoring by hand. The valid fixes use real alarm features: **pending duration (trigger delay)** + **repeat notification** interval (A); **split notifications by a dimension** + **suppression** (D); topic → **Functions** subscription that aggregates into one summary (E). All three settings appeared on `mymagnet-instance-cpu` in Lab 6 Part C. See [[8. Management and Governance — OCI Resource Manager, OS Management Hub, Observability]].

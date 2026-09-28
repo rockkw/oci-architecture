@@ -175,3 +175,16 @@ D. Securing container execution by leveraging hypervisor-level isolation to prev
 **Answer: C**
 
 ---
+
+### Q15
+An enterprise operates a high-frequency payment gateway using OCI Compute instances and wishes to optimize its operational response to sudden spikes in API errors. The current architecture employs an OCI Alarm that sends an email via OCI Notifications every time a 1-minute metric evaluation window detects more than 50 failed transactions. During major network disruptions, this setup floods the executive team's inboxes with thousands of individual emails, leading to severe notification fatigue and delayed remediation. Which two approaches are expensive or impractical ways to resolve this notification storm while maintaining architectural integrity? (Choose two.)
+
+A. Adjust the alarm configuration by increasing the pending duration window and defining a reasonable repeat notification frequency to throttle subsequent messages.
+B. Create a script that uses the OCI CLI to continuously delete and recreate the OCI Alarm every 60 seconds during an outage to clear the firing state history.
+C. Transition all application components to publish logs to an external storage tier and configure a continuous polling loop that executes every second across all raw log objects.
+D. Leverage the split notifications feature grouped by a high-level application ID dimension while setting up a suppression window immediately when a known systemic outage begins.
+E. Route the OCI Alarm notifications to an OCI Notification topic backed by an Oracle Functions subscription that aggregates errors and pushes a consolidated summary to an internal chat channel.
+
+**Answer: B, C**
+
+---
