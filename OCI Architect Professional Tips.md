@@ -111,6 +111,8 @@ come from the source entry.
 
 | Trap (the wrong-but-plausible option) | Reality / correct answer | Seen in | Details |
 | --- | --- | --- | --- |
+| OCI Streaming partitions can be **scaled dynamically** / edited on an existing stream | Partition count and retention are **fixed at creation**: create a new stream and migrate. Dynamic scaling only in **Streaming with Apache Kafka** (add brokers) | Study-source claim, 2026-09-28; self-quiz M4 | [[14. Serverless — OCI Functions, Events, API Gateway]] |
+| Trigger a Function **directly** from an OCI Stream | No native Streaming trigger: use **Connector Hub** (source Streaming → target Functions) | 2026-09-28 review | [[14. Serverless — OCI Functions, Events, API Gateway]] |
 | **Docker-registry secret** (or SSH key pair, Vault master key, JWT) as the prerequisite for `docker push/pull` to OCIR | **Auth token**, used as the `docker login` password. The registry secret is the later, Kubernetes-side object built *from* the token | Att 2 Q7 (missed); Workshop Q2 | [[12. Containers — OCI OKE, Container Instances, OCIR]] |
 | **ConfigMap** stores registry credentials for a private image pull | **Secret** (type `kubernetes.io/dockerconfigjson`) referenced in `imagePullSecrets`; ConfigMap is non-sensitive config only | SC Cloud-Native Q1 (missed) | [[12. Containers — OCI OKE, Container Instances, OCIR]] |
 | **"Local"** image retention policy for all repos in a region | **Global** retention policy (region-wide); the other real type is **Custom**, not "local" | SC Cloud-Native Q3 (missed) | [[12. Containers — OCI OKE, Container Instances, OCIR]] |
