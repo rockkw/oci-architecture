@@ -1310,3 +1310,9 @@ Options: A. FastConnect (partner) primary + Site-to-Site VPN backup on the same 
 
 ### U1-Q50 — Select AI (NL-to-SQL) in stateless APEX
 **Your answer: A — CORRECT.** `SET_PROFILE` is **session-scoped** and doesn't survive stateless APEX requests, so call **`DBMS_CLOUD_AI.GENERATE(prompt, profile_name => …, action => 'runsql'/'showsql')`** with the profile named per call. B (no global default via SET_PROFILE), C, D are invented. Capstone tie-in: Select AI profile script in `lab-capstone-adb-stack/sql/select_ai_profile.sql`. See [[6. Databases — OCI Database, NoSQL, Caching, DR]].
+
+### Udemy practice exam 1 — result
+
+**Official result: PASSED, 72% (36/50; 68% required), 2026-09-28, full 90 minutes.** My running estimate was ~27.5/50, so about 8 answers I marked wrong, half-right or disputed were graded correct (likely several of: disputed/flawed Q8, Q28, Q35, Q37, Q38, Q47; possible changes on Q1; partial credit). Reconcile via Udemy's **Review questions** screen.
+
+**Gaps this exam exposed (notes added during the test):** Edge vs Regional WAF; Recovery Service health statuses and LTR; LVM fast-provisioning cap; OCI Cache encryption and eviction; resource search; one target per connector; key rotation requirements; FSDR member DR properties and supported types; Organization Management constraints; Bastion session types; stateless rules on the Network Firewall subnet; replicated volume resize. **Still to add:** File Storage replication failover; Resource Manager private Git (private endpoint + configuration source provider).
