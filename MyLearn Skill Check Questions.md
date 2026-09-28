@@ -1223,3 +1223,6 @@ Options: A. FastConnect (partner) primary + Site-to-Site VPN backup on the same 
 
 ### U1-Q21 — FSDR: launch replicated instances into a set subnet with a cheaper shape
 **Your answer: B — INCORRECT. Correct: D.** A moving compute instance member of a DR Protection Group has **DR properties**: destination VCN/subnet, shape (can be smaller), fault domain/capacity, volume mappings. A (IAM can't set shapes/networks), B (instance pool isn't how members are mapped) and C (custom Function when a native setting exists) are distractors. See [[Lab 2 - OCI Architect Pro Exam - HADR Design]].
+
+### U1-Q22 — Organization Management: move a joined child tenancy onto the parent's subscription
+**Your answer: A — CORRECT.** In OCI Organization Management the parent tenancy's **subscription mapping** assigns a child tenancy's consumption to a chosen subscription (here A), including existing children that joined by invitation; B's own credits stay with B. B (migrate resources), C (IAM "billing role") and D (support merge; "only new children") are distractors. See [[8. Management and Governance — OCI Resource Manager, OS Management Hub, Observability]] ("Organization Management").

@@ -261,3 +261,15 @@ D. Configure the target virtual cloud network, subnet, and compute shape within 
 **Answer: D**
 
 ---
+
+### Q22
+A global consulting firm recently acquired a boutique agency that has an active OCI child tenancy with its own independent Universal Credits subscription (Subscription B). The parent tenancy of the consulting firm's organization is associated with the primary corporate subscription (Subscription A). After the agency's tenancy accepts the invitation and joins the OCI Organization, the finance team wants to immediately align the agency's resource consumption with Subscription A's preferential rate card and credit pool, while preserving Subscription B's credits. As a solutions architect, which approach should you direct your team to implement?
+
+A. Use the parent tenancy's Subscription Mapping page to map the newly joined child tenancy to Subscription A, which shifts its consumption and rate card terms to the primary corporate subscription.
+B. Initiate a cross-tenancy migration to clone all child compartments into the parent tenancy, as subscription mapping cannot reassign consumption paths dynamically.
+C. Configure a cross-tenancy IAM policy that authorizes the child tenancy to assume the billing administrator role of Subscription A.
+D. Submit a service request to Oracle Support to merge Subscription B's credits directly into Subscription A, as subscription mapping can only be applied to newly created child tenancies.
+
+**Answer: A**
+
+---
