@@ -103,3 +103,15 @@ E. Create an OCI Service Log configuration that natively splits the internal dat
 **Answer (likely key): D, E.** ⚠️ Disputed: per Oracle docs a connector has **one source and one target**, so **A is also unsupported**; B (two connectors) and C (chained connectors) are the supported designs.
 
 ---
+
+### Q9
+Which capability is NOT natively supported as an automatic, built-in feature of OCI Resource Manager?
+
+A. Generating a detailed execution plan prior to applying any infrastructure changes to a resource stack.
+B. Detecting configuration drift by comparing the deployed infrastructure against the last applied state.
+C. Automatically running a complete rollback job to revert resource states if a standard apply job fails.
+D. Importing existing deployed infrastructure resources into a new stack using a resource discovery job.
+
+**Answer: C**
+
+---

@@ -197,6 +197,7 @@ come from the source entry.
 
 | Trap (the wrong-but-plausible option) | Reality / correct answer | Seen in | Details |
 | --- | --- | --- | --- |
+| Resource Manager **automatically rolls back** a failed apply | No auto-rollback: a failed apply leaves resources partially created in state; fix and re-apply, or destroy. Real built-ins: **plan**, **drift detection**, **resource discovery** (stack from existing resources) | Udemy exam 1 Q9 (missed) | [[8.1 Terraform & OCI Resource Manager - Hands-On Reference]] |
 | "Resource names in Terraform are provider specific" read as true; provider aliases read as false | False: the resource **type** is provider-namespaced, the **name** is arbitrary. Aliases are real. "Terraform is an IaaS" is also false (it's IaC) | SC IaC Q5 (missed) | [[1. DevOps — OCI DevOps, CI-CD, Observability]] |
 | "Diff Detection" | **Drift Detection** | SC IaC Q2 | [[8. Management and Governance — OCI Resource Manager, OS Management Hub, Observability]] |
 | `terraform apply` fixes formatting, fetches plugins, or destroys and recreates everything | Those are `fmt`, `init`, `destroy`. Apply makes the changes and updates state | SC IaC Q3 | [[8.1 Terraform & OCI Resource Manager - Hands-On Reference]] |
