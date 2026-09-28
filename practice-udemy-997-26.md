@@ -491,3 +491,15 @@ D. OCI Cloud Guard, because it monitors the environment and uses responder recip
 **Answer: D**
 
 ---
+
+### Q41
+When writing an Oracle Cloud Infrastructure (OCI) Zero Trust Packet Routing (ZPR) policy statement, what is the default behavior if the namespace of a security attribute is omitted?
+
+A. The policy evaluation engine rejects the statement and flags it as a syntax error due to an incomplete attribute identifier.
+B. The policy compiler automatically assumes the default oracle-zpr security attribute namespace.
+C. The system implicitly prefixes the security attribute with the user's root compartment namespace.
+D. The security attribute is evaluated as a global free-form tag instead of an intent-based packet-routing attribute.
+
+**Answer: B**
+
+---

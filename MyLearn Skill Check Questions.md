@@ -1280,3 +1280,6 @@ Options: A. FastConnect (partner) primary + Site-to-Site VPN backup on the same 
 
 ### U1-Q40 — Detect misconfigurations and auto-remediate with responder recipes
 **Your answer: D — CORRECT.** **Cloud Guard**: targets (compartments) + detector recipes (find problems) + **responder recipes** (remediate). Security Zones **prevent** non-compliant creation (preventive, not detect-and-fix); Vulnerability Scanning **reports** but doesn't patch (B's "automatically patches" is the auto trap); Network Firewall is traffic inspection. See [[5. Security — OCI IAM, WAF, Certificates, Vault, Cloud Guard]] and [[Lab 4 - OCI Architect Pro Exam - Vault, Guard, Zones, Logging, Network Boundary]].
+
+### U1-Q41 — ZPR policy: security attribute with no namespace
+**Your answer: D — INCORRECT. Correct: B.** Enabling ZPR creates the default **`oracle-zpr`** security attribute namespace, and a ZPR policy that omits the namespace assumes it. Already in your notes: [[Lab 5 - OCI Architect Pro Exam - Zero Trust Packet Routing]] and [[5. Security — OCI IAM, WAF, Certificates, Vault, Cloud Guard]] (the default `oracle-zpr` namespace); the "omitted namespace → default" consequence is the new piece. Security attributes aren't tags (D).
