@@ -115,3 +115,15 @@ D. Importing existing deployed infrastructure resources into a new stack using a
 **Answer: C**
 
 ---
+
+### Q10
+A company wants to orchestrate the recovery of a multi-tier application using OCI Full Stack Disaster Recovery (FSDR) and is setting up the necessary OCI resources. Which requirement must be met when configuring OCI DR Protection Groups (DRPGs) to enable automated cross-region DR operations?
+
+A. You must deploy both peered DR Protection Groups in the same primary region and establish policy replication rules across target compartments.
+B. You must create the DR Protection Groups in different OCI regions, peer them together, and associate one as the primary and the other as the standby.
+C. You must install a specialized Full Stack DR agent on all member resources to establish the initial cross-region peer relationship.
+D. You must deploy both peered DR Protection Groups in separate tenant organizations and register them with dedicated Oracle Cloud Agents.
+
+**Answer: B**
+
+---

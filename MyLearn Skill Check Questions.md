@@ -1187,3 +1187,6 @@ Options: A. FastConnect (partner) primary + Site-to-Site VPN backup on the same 
 
 ### U1-Q9 — Which is NOT a built-in Resource Manager feature (reversed)
 **Your answer: D — INCORRECT. Correct: C.** Plan jobs (A), drift detection (B) and resource discovery (D: generate a stack from existing resources in a compartment) are all real. There's **no automatic rollback** of a failed apply: like Terraform, a failed apply leaves resources partially created/changed in state; you fix and re-apply or destroy. 4th "automatic feature" trap this session. Live proof: when the capstone's CA creation failed, the other 23 resources stayed. See [[8.1 Terraform & OCI Resource Manager - Hands-On Reference]].
+
+### U1-Q10 — Full Stack DR: DR Protection Group requirement
+**Your answer: B — CORRECT.** One DRPG per region, **peered**, one role primary and the other standby; DR plans (switchover/failover/drills) are built on the standby DRPG. A: same region defeats DR; C: no special FSDR agent on members; D: same tenancy, not separate organizations. See [[Lab 2 - OCI Architect Pro Exam - HADR Design]].

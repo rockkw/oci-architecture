@@ -370,6 +370,13 @@ cert plan as a place where OCI Pro diverges hardest from AWS instincts.)
   separate OCI services with no single combined observability product —
   repeatedly a trap for anyone expecting one unified service.
 
+**Failed deployments don't auto-roll back.** AWS **CloudFormation**
+automatically rolls back a failed stack create/update. OCI **Resource
+Manager** runs Terraform, which has **no automatic rollback**: a failed
+apply leaves resources partially created in state; you fix and re-apply or
+destroy. Real Resource Manager built-ins: plan, drift detection, resource
+discovery (Udemy exam 1 Q9).
+
 ## Observability / logging
 
 **Sending logs to a SIEM: AWS has managed partner delivery; OCI needs one
