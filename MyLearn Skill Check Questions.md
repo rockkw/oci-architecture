@@ -1152,3 +1152,17 @@ A. Edit the stream to 3 partitions · B. Raise retention to raise throughput · 
 A. OCI Streaming · B. Streaming with Apache Kafka, HA cluster · C. Streaming with Apache Kafka, starter cluster · D. Queue
 
 **Answer: B — CORRECT.** Managed Kafka (unlimited retention, ~10 MB/s per partition, single-tenant, 100% compatible); HA for production. Starter clusters are dev/test.
+
+## Udemy practice exam 1 (1Z0-997-26, "100 questions… June 2026", 50 questions, exam mode, 2026-09-28)
+
+*Third-party course; its answer key isn't authoritative. Verdicts below are checked against Oracle docs where possible, and disagreements with the Udemy key are flagged when its explanations are available.*
+
+### U1-Q1 — Base Database managed Data Guard across regions with OCI Vault TDE (choose TWO)
+Options: A. SYNC/MAXIMUM_AVAILABILITY across regions · B. Only MAXIMUM_PERFORMANCE (async) supported by the managed automation · C. Managed association with an on-prem Standard Edition database · D. Bare metal standby with a VM primary · E. With OCI Vault customer-managed TDE keys, cross-region Data Guard is limited to the primary region plus one remote region.
+
+**Your first pick: C, E. Likely correct: B, E** (final submitted answer not recorded). **E verified**: "limited to two regions: the primary region and one remote region" ([Oracle tutorial](https://docs.oracle.com/en/learn/basedb-dataguard-with-ocivault/index.html)). **B**: cross-region supports "the Maximum Performance protection mode and Async Transport" (Maximum Availability exists only within a region). **C false**: "Data Guard does not support Oracle Database Standard Edition" ([About Oracle Data Guard](https://docs.oracle.com/iaas/dbcs/doc/use-oracle-data-guard-db-system.html)); read-only offload needs Active Data Guard = EE Extreme Performance. **D**: VM/bare-metal mixing not confirmed in docs; probably false. See [[6. Databases — OCI Database, NoSQL, Caching, DR]].
+
+### U1-Q2 — FastConnect primary with a cheap, different-medium backup
+Options: A. FastConnect (partner) primary + Site-to-Site VPN backup on the same DRG with routing weights · B. Two FastConnects active-active via ECMP · C. One FastConnect + an internet gateway that initiates tunnels · D. Traffic Management + LPG to a secondary VCN.
+
+**Your answer: A — CORRECT.** VPN over the internet is a different transport, near-zero cost while idle, and BGP preferences keep it standby until FastConnect fails. B doubles recurring cost; C: an IGW doesn't create tunnels; D is unrelated to on-prem connectivity. See [[7. Multicloud and Hybrid — Oracle Database@Azure, FastConnect, DRG]].
