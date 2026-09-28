@@ -398,6 +398,19 @@ Logging API. Full write-up in
 [[8. Management and Governance — OCI Resource Manager, OS Management Hub, Observability]]
 ("Connector Hub to a SIEM").
 
+**Managed OpenSearch: same engine, fewer packaging options on OCI.**
+Amazon OpenSearch Service ≈ **OCI Search with OpenSearch** (☰ → Databases →
+OpenSearch). Same OpenSearch engine, Query DSL, Dashboards, ML Commons and
+k-NN; AWS "domain" = OCI "cluster", AWS dedicated master nodes = OCI
+**leader** nodes, and OCI sizes **dashboard** nodes as their own tier. What
+doesn't carry over: OCI clusters are **private-endpoint only** (AWS also
+offers public endpoints behind fine-grained access control), there's no
+**OpenSearch Serverless** equivalent that I've found, and no
+UltraWarm/cold tiers seen. AI integration uses **OCI Generative AI**
+connectors instead of Bedrock/SageMaker. Full comparison table in
+[[8. Management and Governance — OCI Resource Manager, OS Management Hub, Observability]]
+("OCI Search with OpenSearch — console location, AI models, and comparisons").
+
 **Agent-based log shipping maps 1:1.** OCI **agent configuration** (log
 path + parser + destination custom log, targeted at dynamic groups for OCI
 instances or user groups for on-prem hosts) ≈ **CloudWatch agent config**
