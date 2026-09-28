@@ -407,3 +407,15 @@ D. Remove all stateful rules from the firewall's NSG or the subnet's security li
 **Answer: D**
 
 ---
+
+### Q34
+A global corporation needs to aggregate database service logs, custom application logs, and tenancy-wide audit logs into a single centralized repository for long-term historical compliance reporting. The corporate compliance policy states that all aggregated log data must remain securely stored and available for forensic auditing for seven years. The internal engineering team is evaluating multiple architectural strategies to accomplish this long-term log consolidation. Which two approaches are expensive or impractical ways to achieve this long-term logging requirement? (Choose two.)
+
+A. Configure the native OCI Logging log groups to extend their default internal retention setting to seven years, keeping all raw logs active in the primary search tier.
+B. Deploy OCI Service Connector Hub to automatically stream logs from OCI Logging groups into an OCI Object Storage bucket configured with a lifecycle management rule to move data to Archive Storage.
+C. Utilize OCI Service Connector Hub to direct the centralized log streams into a target OCI Object Storage bucket, managing long-term retention via automated object lifecycle policies.
+D. Write a custom background daemon on every instance to copy log files onto dedicated local block volumes configured with maximum performance characteristics for long-term archival.
+
+**Answer: A, D**
+
+---
