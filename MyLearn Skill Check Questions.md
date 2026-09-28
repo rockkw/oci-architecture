@@ -1122,3 +1122,33 @@ D. Autonomous AI Transaction Processing
 **Estimate: 32/50 = 64% if multi-selects are all-or-nothing (the pass mark is 68%, i.e. 34/50); 34.5/50 = 69% with partial credit.** Borderline either way.
 
 **Weakest areas this attempt:** Security (KMS endpoints, Vault auto-decrypt, CMK assignment, WAF rule types, firewall vs NSG), Observability/Monitoring vocabulary (Interval, MQL parts, agent config vs Cloud Agent), and reversed "NOT valid / expensive or impractical" questions. **Missed in both attempts:** Q18 (Vault auto-decrypt) and Q49 (KMS management vs crypto endpoint). **Fixed since attempt 1:** Q1 (VNIC CLI), Q17 (microservice), Q25 (API Gateway rate limiting), Q38 (autoscaling needs an instance pool). All traps are in [[OCI Architect Professional Tips]] §4.
+
+## Self-made quiz: OCI messaging services (2026-09-28, 5/5)
+
+*Written from the new Note 14 section ([[14. Serverless — OCI Functions, Events, API Gateway]], "OCI Streaming, OCI Streaming with Apache Kafka, and Queue"); not from an Oracle exam.*
+
+### M1 — Migrate a Kafka app without code changes
+An on-prem Apache Kafka app must move to OCI quickly, without changing application code, with minimal operations; traffic is a few MB/s.
+A. Kafka on Compute across three fault domains · B. OCI Streaming via the stream pool's Kafka-compatible endpoint · C. OCI Queue, rewriting producers · D. Notifications with HTTPS subscriptions
+
+**Answer: B — CORRECT.** Streaming's Kafka compatibility is a config change (bootstrap server + SASL auth token). A adds operational overhead; C needs code changes.
+
+### M2 — Keep events 90 days with reprocessing
+A. Streaming stream with 90-day retention · B. Streaming plus Connector Hub → Object Storage archive · C. More partitions to retain more · D. Queue with a 90-day visibility timeout
+
+**Answer: B — CORRECT.** Streaming retention maxes at 7 days, so archive via Connector Hub. A doesn't exist; C confuses throughput with retention.
+
+### M3 — Each job once, by one of many workers, with retries and failed-job isolation
+A. Streaming with 50 consumer groups · B. Notifications · C. Queue with a dead-letter queue · D. Events
+
+**Answer: C — CORRECT.** Queue = one consumer per message, retries, DLQ. Streaming consumer groups each read every message (fan-out/replay).
+
+### M4 — 1-partition stream throttled at 3 MB/s
+A. Edit the stream to 3 partitions · B. Raise retention to raise throughput · C. Create a new stream with ≥3 partitions and migrate · D. Enable stream-pool auto-scaling
+
+**Answer: C — CORRECT.** Partitions (and retention) can't be changed after creation; each partition writes 1 MB/s. A and D don't exist. Added to the finite-lists cheat-sheet in [[OCI Architect Professional Tips]].
+
+### M5 — CDC with unlimited retention, >1 MB/s per partition, single-tenant, full Kafka tooling
+A. OCI Streaming · B. Streaming with Apache Kafka, HA cluster · C. Streaming with Apache Kafka, starter cluster · D. Queue
+
+**Answer: B — CORRECT.** Managed Kafka (unlimited retention, ~10 MB/s per partition, single-tenant, 100% compatible); HA for production. Starter clusters are dev/test.
