@@ -395,3 +395,15 @@ D. You must configure a client IP CIDR block allowlist on the bastion to restric
 **Answer: C**
 
 ---
+
+### Q33
+Your enterprise has deployed an OCI Network Firewall in a dedicated private subnet of a Hub VCN to inspect all inbound traffic from the public internet. During validation, the operations team reports high latency and intermittent packet drops on traffic flows passing through the firewall. The network team discovers that the Network Security Group (NSG) assigned to the firewall's VNIC contains several stateful security rules to restrict traffic to specific backend subnets. As a solutions architect, which design adjustment should you recommend to resolve this issue?
+
+A. Reconfigure the OCI Network Firewall to operate in transparent bridging mode and disable its stateful packet inspection engine.
+B. Move the OCI Network Firewall VNIC into a public subnet and configure a Dynamic Routing Gateway (DRG) transit routing table with stateful route rules.
+C. Implement a secondary active-active Network Firewall instance in the same subnet to load-balance the stateful traffic automatically.
+D. Remove all stateful rules from the firewall's NSG or the subnet's security list, and ensure any rules assigned to the firewall's subnet allow traffic to enter without stateful tracking.
+
+**Answer: D**
+
+---

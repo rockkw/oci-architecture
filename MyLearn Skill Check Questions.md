@@ -1256,3 +1256,6 @@ Options: A. FastConnect (partner) primary + Site-to-Site VPN backup on the same 
 
 ### U1-Q32 — Which is NOT a Bastion characteristic (reversed)
 **Your answer: A — INCORRECT. Correct: C.** A is **true** (max session TTL 3 h = 180 min), as are B (multiple concurrent sessions) and D (CIDR block allowlist). C is false: Bastion supports **managed SSH** sessions to instances and **port-forwarding** sessions to any private resource/port, not "only SSH to a database". Reversed-question method: eliminate every true statement. See [[5. Security — OCI IAM, WAF, Certificates, Vault, Cloud Guard]].
+
+### U1-Q33 — Network Firewall drops/latency caused by stateful NSG rules on its VNIC
+**Your answer: A — INCORRECT. Correct: D.** Oracle's guidance: security rules on the **firewall's own subnet/VNIC should be stateless** (allow all needed traffic without connection tracking); stateful tracking there conflicts with the firewall's own stateful inspection and asymmetric flows, causing drops. The firewall does the filtering; the NSG/security list in front of it shouldn't. A (disable the firewall's stateful engine) defeats its purpose; B ("stateful route rules") isn't a thing; C: firewall HA is built in. Compare MyLearn Q33 (independent layers). See [[5. Security — OCI IAM, WAF, Certificates, Vault, Cloud Guard]].
