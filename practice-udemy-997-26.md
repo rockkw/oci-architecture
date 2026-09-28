@@ -383,3 +383,15 @@ D. Configure an OCI Web Application Firewall regional policy, deploy it on a ded
 **Answer: A**
 
 ---
+
+### Q32
+Which is NOT a valid operational characteristic or constraint of the OCI Bastion service?
+
+A. The maximum session time-to-live configuration allowed is limited to exactly one hundred and eighty minutes in all.
+B. A single bastion host allows you to configure multiple concurrent active sessions up to its maximum service limits.
+C. A bastion must be deployed in a private subnet and only routes incoming SSH connections to private target database.
+D. You must configure a client IP CIDR block allowlist on the bastion to restrict access to your target OCI resources.
+
+**Answer: C**
+
+---
