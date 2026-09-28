@@ -587,3 +587,27 @@ D. Configure an automatic backup schedule to an Object Storage bucket with a 90-
 **Answer: A**
 
 ---
+
+### Q49
+A company is configuring a cross-region disaster recovery plan and wants to use Oracle Cloud Infrastructure (OCI) DNS Traffic Management to automate failover. Which capability can OCI DNS Traffic Management leverage to automatically evaluate the availability of the primary endpoint and steer traffic to the secondary endpoint?
+
+A. OCI Compute autoscaling group status can be linked to the policy to detect instance health directly.
+B. OCI Load Balancer backend set metrics can be streamed via Service Connector Hub to trigger the policy.
+C. OCI Health Checks monitors and on-demand probes can be integrated to constantly evaluate the viability of the primary answer.
+D. OCI Event Service rules can trigger DNS steering updates automatically whenever a ping fails.
+
+**Answer: C**
+
+---
+
+### Q50
+An application development team is building a low-code dashboard using Oracle Application Express (APEX) on top of an Oracle Autonomous AI Database Serverless instance. The dashboard must allow business users to enter natural language queries in a text field, which are then translated into SQL statements and executed to return charts. Because APEX operates in a stateless web environment, database sessions are not preserved between distinct HTTP requests. As a solutions architect, which implementation pattern should you recommend to successfully execute natural language-to-SQL translations within this stateless APEX application?
+
+A. Use the DBMS_CLOUD_AI.GENERATE function, specifying the AI profile name directly as an argument, because setting a session-level profile with DBMS_CLOUD_AI.SET_PROFILE will not persist across stateless APEX requests.
+B. Execute the DBMS_CLOUD_AI.SET_PROFILE procedure at the schema level during deployment to establish a global database default profile that automatically applies to all incoming stateless connection pools.
+C. Implement a database system-level event trigger that intercepts and parses any inbound SELECT AI statements, manually mapping the execution context to a pre-defined application client identifier.
+D. Establish a loopback database link pointing to a secondary schema inside the database where session state can be locked and maintained for the duration of the active web session.
+
+**Answer: A**
+
+---

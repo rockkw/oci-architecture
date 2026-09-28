@@ -1304,3 +1304,9 @@ Options: A. FastConnect (partner) primary + Site-to-Site VPN backup on the same 
 
 ### U1-Q48 — Recovery Service: 90-day retention, protected from deletion
 **Your answer: A — CORRECT.** Custom **protection policy** (90 days) + **retention lock**, which can only be scheduled **at least 14 days in the future** (a grace period before it becomes immutable), so B's "zero-delay" isn't allowed. Oracle-defined policies are Bronze/Silver/Gold/Platinum with fixed periods (C's approach adds an IAM workaround); D bypasses Recovery Service. (Details from memory, consistent with the option wording; not doc-checked.) See [[6. Databases — OCI Database, NoSQL, Caching, DR]].
+
+### U1-Q49 — DNS Traffic Management failover: how primary health is evaluated
+**Your answer: C — CORRECT.** Failover steering policies attach **Health Checks** monitors (continuous) to decide whether the primary answer is healthy. A, B, D invent integrations. See [[9. Networking — OCI VCN, DRG, Gateways, Load Balancers]] (section 7).
+
+### U1-Q50 — Select AI (NL-to-SQL) in stateless APEX
+**Your answer: A — CORRECT.** `SET_PROFILE` is **session-scoped** and doesn't survive stateless APEX requests, so call **`DBMS_CLOUD_AI.GENERATE(prompt, profile_name => …, action => 'runsql'/'showsql')`** with the profile named per call. B (no global default via SET_PROFILE), C, D are invented. Capstone tie-in: Select AI profile script in `lab-capstone-adb-stack/sql/select_ai_profile.sql`. See [[6. Databases — OCI Database, NoSQL, Caching, DR]].
