@@ -358,3 +358,16 @@ E. All in-flight database transactions and active queries are stopped immediatel
 **Answer: B, E**
 
 ---
+
+### Q30
+An enterprise is planning to transition from a single-tenancy compartment model to a multi-tenancy architecture using OCI Organization Management to support distinct business units. The lead security architect is evaluating the tenancy boundaries and subscription requirements before initiating the rollout. Which two architectural boundaries or subscription constraints must the architect consider when designing this multi-tenancy organization? (Choose two.)
+
+A. Each child tenancy is created with its own completely isolated set of IAM users, groups, and security policies, with no inheritance or default access granted to parent tenancy administrators.
+B. Parent tenancy administrators can directly manage and edit child tenancy IAM policies from the parent tenancy's Console without establishing cross-tenancy trust.
+C. If the parent tenancy is activated under a standard Pay As You Go or Trial subscription, its default service limit for creating child tenancies is zero.
+D. A child tenancy can be subscribed to any OCI region globally, regardless of which regions the parent tenancy is currently subscribed to.
+E. Existing child tenancies can be invited to join the organization even if they are currently on a free promotional Trial subscription.
+
+**Answer: A, C**
+
+---

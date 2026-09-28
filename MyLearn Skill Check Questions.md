@@ -1247,3 +1247,6 @@ Options: A. FastConnect (partner) primary + Site-to-Site VPN backup on the same 
 
 ### U1-Q29 — Stopping a Globally Distributed Autonomous Database (choose TWO)
 **Your answer: B, D — PARTLY CORRECT (B right, D wrong). Likely correct: B, E.** Stopping stops shards **and** catalog: ECPU billing halts (B), in-flight work ends (E); the catalog does not stay online (D contradicts B); storage keeps billing (A, same as the capstone ADB: ~$0.68/h running vs ~$4/month stopped); no connection queuing (C). Tell: B and D can't both be true. See [[6. Databases — OCI Database, NoSQL, Caching, DR]].
+
+### U1-Q30 — Organization Management boundaries and subscription constraints (choose TWO)
+**Your answer: B, C — PARTLY CORRECT (C right, B wrong). Correct: A, C** (verified, [Planning Considerations](https://docs.oracle.com/en-us/iaas/Content/General/organization/organization_planning.htm)). PAYG/Trial = 0 child tenancies; child IAM is isolated ("IAM policies can't inherit across tenancies"; governance rules cover regions/quotas/tags, not IAM). B contradicts A; D: parent must be subscribed to the **superset** of child regions; E: Free Tier/Trial can't be invited until paid. See [[8. Management and Governance — OCI Resource Manager, OS Management Hub, Observability]].
