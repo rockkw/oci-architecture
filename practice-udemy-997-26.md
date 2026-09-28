@@ -563,3 +563,15 @@ D. You must resize the source block volume directly, which triggers an automated
 **Answer: B**
 
 ---
+
+### Q47
+A financial institution is deploying a Globally Distributed Autonomous AI Database to process multi-region transactions. The team wants to use the 'Automated' data distribution method with Oracle Data Guard replication across multiple OCI regions. As the solutions architect, which design constraint should you explain to your team regarding this replication type?
+
+A. Data Guard replication requires at least three distinct OCI regions to establish quorum for automated data distribution failover mechanisms.
+B. Data Guard replication type must be combined with Raft replication when database shards are deployed across multiple distinct OCI regions.
+C. Data Guard replication is restricted to single-node catalog databases and cannot be enabled on automated distributed database shards in OCI.
+D. Data Guard replication type under automated data distribution is only supported when database shards are located within a single OCI region.
+
+**Answer: likely D** (unverified)
+
+---

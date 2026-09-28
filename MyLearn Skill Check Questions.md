@@ -1298,3 +1298,6 @@ Options: A. FastConnect (partner) primary + Site-to-Site VPN backup on the same 
 
 ### U1-Q46 — Resize a block volume with cross-region replication enabled
 **Your answer: A — INCORRECT. Correct: B.** A volume can't be resized while replication is on: **disable replication (the replica is deleted) → resize → re-enable replication** (a new full replica is built). A (clone/delete/recreate) is needlessly destructive; C ("pause") and D (automatic replica resize) invent features. See [[4. Storage — OCI Object, Archive, File, Block Storage]].
+
+### U1-Q47 — Globally Distributed ADB: Data Guard replication with automated distribution
+**Your answer: B — likely INCORRECT. Likely correct: D.** Replication type is a choice (**Data Guard or Raft**), not a combination (B). With automated distribution, Data Guard replication is (per the question's framing) supported only when shards are in a **single region**; Raft is the multi-region-friendly option. A (3-region quorum) describes Raft-style consensus, not Data Guard. ⚠️ Not doc-verified; check the Udemy explanation. See [[6. Databases — OCI Database, NoSQL, Caching, DR]].
