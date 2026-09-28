@@ -1166,3 +1166,6 @@ Options: A. SYNC/MAXIMUM_AVAILABILITY across regions · B. Only MAXIMUM_PERFORMA
 Options: A. FastConnect (partner) primary + Site-to-Site VPN backup on the same DRG with routing weights · B. Two FastConnects active-active via ECMP · C. One FastConnect + an internet gateway that initiates tunnels · D. Traffic Management + LPG to a secondary VCN.
 
 **Your answer: A — CORRECT.** VPN over the internet is a different transport, near-zero cost while idle, and BGP preferences keep it standby until FastConnect fails. B doubles recurring cost; C: an IGW doesn't create tunnels; D is unrelated to on-prem connectivity. See [[7. Multicloud and Hybrid — Oracle Database@Azure, FastConnect, DRG]].
+
+### U1-Q3 — WAF for private/internal traffic with no DNS changes or reverse proxy
+**Your answer: C — INCORRECT. Correct: D** (Regional WAF policy attached to the private Flexible Load Balancer). Edge WAF is internet-facing, DNS-based, and a reverse proxy, so it fails all three constraints (internal peered-VCN traffic, no public DNS changes, no reverse-proxy routing). A Regional policy enforces at the LB itself, private LBs included. B is fabricated. Rule: *internet-facing/global/DNS → Edge; on the LB, private traffic → Regional.* See [[5. Security — OCI IAM, WAF, Certificates, Vault, Cloud Guard]].

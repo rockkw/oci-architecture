@@ -30,3 +30,15 @@ D. Use OCI Traffic Management steering policies to dynamically map internal netw
 **Answer: A**
 
 ---
+
+### Q3
+A multicloud retail organization is deploying an application on OCI that is distributed across multiple private backend servers, fronted by a private OCI Flexible Load Balancer. The security policy mandates that all web traffic, including internal administrative traffic from other peered Virtual Cloud Networks (VCNs) in the same region, must undergo Web Application Firewall (WAF) inspection. Furthermore, the organization prohibits public DNS modifications and reverse-proxy routing for this internal traffic. As a solutions architect, which WAF deployment model and approach should you implement to satisfy these security constraints?
+
+A. Deploy an OCI WAF Edge policy and configure DNS Traffic Management to route the internal VCN traffic to the edge nodes via a NAT Gateway.
+B. Deploy OCI Network Firewall in a transit VCN and configure it to encapsulate internal HTTP headers before forwarding traffic to an OCI WAF Edge policy.
+C. Create an OCI WAF Edge policy, map the private Load Balancer IP to a public DNS A record, and configure private DNS zones to resolve the record through the edge nodes.
+D. Deploy an OCI WAF Regional policy and attach it directly to the private OCI Flexible Load Balancer as the policy enforcement point.
+
+**Answer: D**
+
+---
