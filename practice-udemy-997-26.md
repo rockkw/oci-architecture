@@ -15,7 +15,7 @@ C. A managed Data Guard association can be dynamically established between an OC
 D. The standby database can be deployed using a bare metal DB system shape to offload heavy reporting workloads while the primary database runs on a virtual machine shape.
 E. When using OCI Vault for customer-managed TDE keys, the cross-region Data Guard configuration is restricted to a maximum of two regions: the primary region and one remote region.
 
-**Answer: B, E** (verified against Oracle docs; Udemy key not yet seen). Cross-region = Maximum Performance / async only; Vault-keyed cross-region Data Guard = primary + one remote region; Standard Edition isn't supported by Data Guard.
+**Answer: B, E** (verified against Oracle docs; Udemy key agrees). Cross-region = Maximum Performance / async only; Vault-keyed cross-region Data Guard = primary + one remote region; Standard Edition isn't supported by Data Guard.
 
 ---
 
@@ -100,7 +100,7 @@ C. Route the database logs into an OCI Streaming pool via a single connector, an
 D. Provision an OCI Search structured query cron job that continuously reads raw log text chunks from the source log groups and uses parallel multi-threaded worker threads to write the payloads to both destinations.
 E. Create an OCI Service Log configuration that natively splits the internal database audit stream into two distinct output streams prior to reaching the OCI Logging service tier.
 
-**Answer (likely key): D, E.** ⚠️ Disputed: per Oracle docs a connector has **one source and one target**, so **A is also unsupported**; B (two connectors) and C (chained connectors) are the supported designs.
+**Answer (Udemy key): A, E.** A connector has **one source and one target**, so A's "dual primary targets" is unsupported; E is fabricated. Udemy grades D (custom Search/worker job) as "technically possible", not unsupported. B (two connectors) and C (chained connectors) are the supported designs.
 
 ---
 
@@ -342,7 +342,7 @@ B. Configure reverse replication from Region B back to Region A, which automatic
 C. Edit the replication target settings to change the target file system access mode from Read-Only to Read-Write.
 D. Create a clone of the last applied replication snapshot on the target file system to a new file system, and then export the cloned file system.
 
-**Answer: D** (A is a garbled version of "delete the replication"; confirm with the Udemy explanation)
+**Answer: D** (Udemy key confirmed)
 
 ---
 
@@ -428,7 +428,7 @@ B. Recreate the entire cluster on a larger memory-per-node shape before every fl
 C. Deploy an OCI GoldenGate replication topology between the OCI Cache cluster and an OCI Autonomous Data Warehouse instance to mirror cache keys and serve real-time application read queries from the data warehouse.
 D. Enable automatic vertical auto-scaling within OCI Cache settings to let the cluster dynamically resize its underlying compute cores and memory allocation up and down minute-by-minute based on real-time CPU metrics.
 
-**Answer: likely B, C** (⚠️ ambiguous: D describes a feature that doesn't exist, so three options are invalid; A is the only valid approach)
+**Answer (Udemy key): B, D.** D is "impractical" because OCI Cache has no minute-by-minute vertical autoscaling. ⚠️ C (GoldenGate to ADW) is also absurd, but the key leaves it out. A (add replicas for the peak) is the valid approach.
 
 ---
 
@@ -452,7 +452,7 @@ B. Configure the alarm metric query to use the nvl() MQL function to convert all
 C. Set the alarm state transition policy to FORCE_OK and decrease the metric sampling resolution from 1 minute to 1 second to overwrite empty intervals.
 D. Create an automated OCI Notification subscription that runs an Oracle Function to insert mock telemetry data into the monitoring namespace whenever a gap is detected.
 
-**Answer: likely A** (unverified: exact OCI name for the missing-data setting)
+**Answer: A** (Udemy key confirmed)
 
 ---
 
@@ -464,7 +464,7 @@ B. OCI VM Database Systems, orchestrating automated active-standby role failover
 C. OCI Public Load Balancers, managing automated backend server traffic redirection.
 D. OCI Autonomous Databases, enabling automated cross-region database instance switchovers.
 
-**Answer: ⚠️ flawed question.** Per Oracle's current docs, all four are supported member types (volume groups, Base Database Service, load balancers, Autonomous Database). The key probably expects C (older question?).
+**Answer: ⚠️ flawed question.** Per Oracle's current docs, all four are supported member types (volume groups, Base Database Service, load balancers, Autonomous Database). Udemy's key is **C** (graded correct): it treats load balancers as unsupported, which is outdated.
 
 ---
 
@@ -572,7 +572,7 @@ B. Data Guard replication type must be combined with Raft replication when datab
 C. Data Guard replication is restricted to single-node catalog databases and cannot be enabled on automated distributed database shards in OCI.
 D. Data Guard replication type under automated data distribution is only supported when database shards are located within a single OCI region.
 
-**Answer: likely D** (unverified)
+**Answer: D** (Udemy key confirmed: with automated distribution, Data Guard replication is single-region only; cross-region Data Guard requires user-defined distribution)
 
 ---
 
