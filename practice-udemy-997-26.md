@@ -225,3 +225,15 @@ D. Deploy your Git server SSL certificate inside OCI API Gateway, create a Resou
 **Answer: A**
 
 ---
+
+### Q19
+Which requirement must be met to enable automatic key rotation for master encryption keys in the Oracle Cloud Infrastructure (OCI) Key Management service?
+
+A. The master encryption key must be an asymmetric RSA key stored in either a default or virtual private vault.
+B. The key must reside in a virtual private vault, and the rotation interval must be configured between 60 and 365 days.
+C. The key must be imported via Bring Your Own Key (BYOK) with a custom wrapping key, and the rotation interval must be exactly 90 days.
+D. The key must belong to a default vault, and the next rotation date must be scheduled within 30 days of key creation.
+
+**Answer: B**
+
+---

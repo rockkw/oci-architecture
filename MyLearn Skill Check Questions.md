@@ -1214,3 +1214,6 @@ Options: A. FastConnect (partner) primary + Site-to-Site VPN backup on the same 
 
 ### U1-Q18 — Resource Manager with a private on-prem Git server over VPN
 **Your answer: B — INCORRECT. Correct: A.** Real Resource Manager resources: **private endpoint** (private path into the VCN → VPN → on-prem Git) and **configuration source provider** (Git URL + token, referencing the private endpoint), plus the Git server's SSL certificate as a CA bundle in **OCI Certificates**. "Resource Manager Service Gateway / NAT Gateway / Dynamic Group" are fabricated names (a service gateway only reaches Oracle services, never on-prem). Certificate-location wording not re-verified. See [[8.1 Terraform & OCI Resource Manager - Hands-On Reference]].
+
+### U1-Q19 — Requirements for automatic MEK rotation
+**Your answer: B — CORRECT.** Automatic (scheduled) rotation needs the key in a **virtual private vault**, interval **60–365 days**. Default vault (D), BYOK-only/exactly 90 days (C) and RSA-only (A) are distractors. Rotation facts weren't in Note 5; added along with a finite-lists row in Tips. See [[5. Security — OCI IAM, WAF, Certificates, Vault, Cloud Guard]].
