@@ -213,3 +213,15 @@ D. Set up an OCI Monitoring query that aggregates CPU utilization metrics from a
 **Answer: C**
 
 ---
+
+### Q18
+Your organization utilizes OCI Resource Manager to manage its cloud-native infrastructure stacks using Terraform. To satisfy strict corporate compliance and security guidelines, all Terraform configuration files must be stored on an on-premises, nonpublic Git server that is only accessible via site-to-site VPN. Additionally, any communication between OCI Resource Manager and this private Git server must be secure and fully authenticated. As a solutions architect, which sequential approach must you recommend to configure this integration?
+
+A. Import your Git server SSL certificate inside OCI Certificates, create a Resource Manager Private Endpoint, and configure the Configuration Source Providers referencing the two.
+B. Upload your Git server SSL certificate inside OCI Vault Secrets, create a Resource Manager Service Gateway, and configure the Configuration Source Providers referencing the two.
+C. Register your Git server public keys inside OCI Identity Domains, create a Resource Manager NAT Gateway, and configure the Configuration Source Providers referencing those two.
+D. Deploy your Git server SSL certificate inside OCI API Gateway, create a Resource Manager Dynamic Group, and configure the Configuration Source Providers referencing those two.
+
+**Answer: A**
+
+---
