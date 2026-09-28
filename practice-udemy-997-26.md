@@ -467,3 +467,15 @@ D. OCI Autonomous Databases, enabling automated cross-region database instance s
 **Answer: ⚠️ flawed question.** Per Oracle's current docs, all four are supported member types (volume groups, Base Database Service, load balancers, Autonomous Database). The key probably expects C (older question?).
 
 ---
+
+### Q39
+A security administrator is deploying governance rules across an OCI Organization containing several pre-existing child tenancies. The administrator successfully creates a Quota policy governance rule in the parent tenancy, but notices that the rule fails to attach to any child tenancies, showing an error status. At the same time, the administrator attempts to create and attach a Tags governance rule to clone a tag namespace named Ops-Governance, but the attachment fails on a specific child tenancy. As a solutions architect, which explanation correctly identifies the root causes of both failures?
+
+A. The Quota policy rule failed because the child tenancies must manually opt in to receive quota updates, while the Tags rule failed because tag namespace cloning is not supported across different regions.
+B. The Quota policy rule failed to attach due to a syntax or formatting error in the policy statement, while the Tags rule failed because the target child tenancy already contained an existing tag namespace with the duplicate name Ops-Governance.
+C. The Quota policy rule failed because parent tenancies cannot enforce quotas on child tenancies that utilize distinct credit subscriptions, while the Tags rule failed because default tags can only be applied to empty compartments.
+D. The Quota policy rule failed due to a regional service limit restriction, while the Tags rule failed because the child tenancy administrator explicitly locked the tag namespace locally.
+
+**Answer: B**
+
+---
