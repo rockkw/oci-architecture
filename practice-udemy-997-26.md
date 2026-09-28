@@ -201,3 +201,15 @@ E. LTR backups do not support in-place restore operations and are exclusively in
 **Answer: B, E**
 
 ---
+
+### Q17
+An enterprise cloud operations team needs to build an automated asset inventory report that tracks all database resources deployed across their entire OCI tenancy. The report must explicitly capture the exact resource type, its compartment location, and its creation timestamp, filtering out all non-database infrastructure components. The architect must choose a solution that minimizes API rate-limiting issues associated with sequential, multi-compartment SDK polling loops. Which approach should the solutions architect direct the team to implement?
+
+A. Implement an OCI Connector Hub that streams all tenancy resource state changes directly into an OCI Notifications topic, parsing the emails manually to compile the report.
+B. Configure a custom OCI Logging Analytics parser to run continuous text regex queries over all standard infrastructure access logs across the tenancy compartments.
+C. Use the OCI Search service to execute a single structured search query filtering by specific database resource types across all compartments within the region.
+D. Set up an OCI Monitoring query that aggregates CPU utilization metrics from all compartments and uses the resource name dimension to reconstruct the asset inventory.
+
+**Answer: C**
+
+---
