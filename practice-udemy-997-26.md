@@ -419,3 +419,15 @@ D. Write a custom background daemon on every instance to copy log files onto ded
 **Answer: A, D**
 
 ---
+
+### Q35
+A multinational retailer experiences predictable, massive traffic spikes during annual flash sales, causing the read load on their backend database to surge. To mitigate this, the team implemented an OCI Cache with Redis cluster, but during the most recent peak event, the cache's reader endpoint reached its maximum throughput limit. The cloud architect needs to scale the caching tier to handle future read spikes efficiently while minimizing cost and operational disruption. Which two approaches are expensive or impractical ways to increase the read capacity of the OCI Cache cluster? (Choose two.)
+
+A. Increase the number of replica nodes in the cluster settings during peak windows to scale out read capacity, and then scale them down when the peak ends.
+B. Recreate the entire cluster on a larger memory-per-node shape before every flash sale, which requires taking the cache offline and manually importing data from an external Object Storage backup.
+C. Deploy an OCI GoldenGate replication topology between the OCI Cache cluster and an OCI Autonomous Data Warehouse instance to mirror cache keys and serve real-time application read queries from the data warehouse.
+D. Enable automatic vertical auto-scaling within OCI Cache settings to let the cluster dynamically resize its underlying compute cores and memory allocation up and down minute-by-minute based on real-time CPU metrics.
+
+**Answer: likely B, C** (⚠️ ambiguous: D describes a feature that doesn't exist, so three options are invalid; A is the only valid approach)
+
+---

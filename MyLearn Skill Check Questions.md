@@ -1262,3 +1262,6 @@ Options: A. FastConnect (partner) primary + Site-to-Site VPN backup on the same 
 
 ### U1-Q34 — 7-year log retention: which two are expensive/impractical (reversed)
 **Your answer: A, D — CORRECT.** OCI Logging retention maxes out far below 7 years (A isn't possible, and keeping everything in the search tier would be costly anyway); D is custom, per-instance and on expensive high-performance storage. B and C are the supported pattern, and the capstone's exact design: Connector Hub → Object Storage (`mymagnet-log-archive`) with a lifecycle rule to Archive. See [[8. Management and Governance — OCI Resource Manager, OS Management Hub, Observability]].
+
+### U1-Q35 — Scale OCI Cache reads: which two are expensive/impractical (reversed)
+**Your answer: B, C — likely matches the key; ⚠️ question ambiguous.** The valid approach is **A**: add **replica nodes** (non-sharded clusters scale out reads, 1–5 nodes) for the peak, then remove them; memory can also be resized in place. B (recreate offline from a backup) and C (GoldenGate to ADW) are impractical. **D is also invalid**: OCI Cache has no automatic minute-by-minute vertical autoscaling, so three of four options are wrong for a "pick two". Check the Udemy key. See [[6. Databases — OCI Database, NoSQL, Caching, DR]].
