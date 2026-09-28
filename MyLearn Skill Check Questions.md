@@ -1241,3 +1241,6 @@ Options: A. FastConnect (partner) primary + Site-to-Site VPN backup on the same 
 
 ### U1-Q27 — OCIR login username for a federated user (image pull secret)
 **Your answer: D — CORRECT.** Federated (IDCS) users: `<tenancy-namespace>/oracleidentitycloudservice/<username>`; local/Default-domain users: `<tenancy-namespace>/<username>` (B); newer non-default identity domains: `<tenancy-namespace>/<domain-name>/<username>`. The password is always an **auth token**. Your Lab 1 notes record the federated form. C reverses the order; A invents an `@` format. See [[12. Containers — OCI OKE, Container Instances, OCIR]].
+
+### U1-Q28 — File Storage replication failover: make the target's data writable
+**Your answer: C — INCORRECT. Correct: D (likely key).** A replication target is read-only and can't be exported; there's no access-mode toggle (C invented). Failover: **clone the last applied replication snapshot** to a new file system and **export the clone**. Deleting the replication also frees the target (A garbles this). Reverse replication (B) is for failback. Not doc-verified this session. See [[4. Storage — OCI Object, Archive, File, Block Storage]].

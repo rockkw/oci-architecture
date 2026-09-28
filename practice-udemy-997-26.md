@@ -333,3 +333,15 @@ D. The username format configured as <tenancy-namespace>/oracleidentitycloudserv
 **Answer: D**
 
 ---
+
+### Q28
+An enterprise replicates its Oracle Cloud Infrastructure (OCI) File Storage service (FSS) file system from Region A to Region B for disaster recovery. During a regional outage in Region A, the operations team needs to failover and immediately enable read-write access to the replicated data in Region B. However, OCI File Storage constraints prevent directly exporting or writing to a file system that is currently configured as a replication target. As a solutions architect, which approach must you direct your team to follow to resolve this issue and restore application services in Region B?
+
+A. Temporarily delete the replication target resource, which automatically converts the target file system into a standard read-write file system.
+B. Configure reverse replication from Region B back to Region A, which automatically unlocks the target file system for write operations.
+C. Edit the replication target settings to change the target file system access mode from Read-Only to Read-Write.
+D. Create a clone of the last applied replication snapshot on the target file system to a new file system, and then export the cloned file system.
+
+**Answer: D** (A is a garbled version of "delete the replication"; confirm with the Udemy explanation)
+
+---
