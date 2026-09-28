@@ -321,3 +321,15 @@ D. Both key managers can be run concurrently, but each database shard must be te
 **Answer: A**
 
 ---
+
+### Q27
+A company is configuring an OCI Kubernetes Engine (OKE) deployment to pull images from a private repository in the OCI Container Registry (OCIR). Which username format should the administrator specify in the Kubernetes image pull secret for a federated user to authenticate successfully?
+
+A. The username format configured as <username>@<tenancy-namespace> where the namespace is a static tenancy name.
+B. The username format configured as <tenancy-namespace>/<username> which uses the specific main identity domain.
+C. The username format configured as <identity-provider>/<tenancy-namespace>/<username> for the federated users.
+D. The username format configured as <tenancy-namespace>/oracleidentitycloudservice/<username> for authentication.
+
+**Answer: D**
+
+---

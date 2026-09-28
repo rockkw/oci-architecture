@@ -1238,3 +1238,6 @@ Options: A. FastConnect (partner) primary + Site-to-Site VPN backup on the same 
 
 ### U1-Q26 — Globally Distributed Autonomous Database: switching key manager later
 **Your answer: A — likely CORRECT.** For Globally Distributed Autonomous Database, the **encryption key type** (Oracle-managed / OCI Vault / Oracle Key Vault) is chosen at creation and **can't be changed afterwards**, so pick the final key manager up front. B, C, D invent procedures. (Based on the documented creation-time restriction; not re-verified this session.) See [[6. Databases — OCI Database, NoSQL, Caching, DR]].
+
+### U1-Q27 — OCIR login username for a federated user (image pull secret)
+**Your answer: D — CORRECT.** Federated (IDCS) users: `<tenancy-namespace>/oracleidentitycloudservice/<username>`; local/Default-domain users: `<tenancy-namespace>/<username>` (B); newer non-default identity domains: `<tenancy-namespace>/<domain-name>/<username>`. The password is always an **auth token**. Your Lab 1 notes record the federated form. C reverses the order; A invents an `@` format. See [[12. Containers — OCI OKE, Container Instances, OCIR]].
