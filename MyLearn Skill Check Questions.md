@@ -1301,3 +1301,6 @@ Options: A. FastConnect (partner) primary + Site-to-Site VPN backup on the same 
 
 ### U1-Q47 — Globally Distributed ADB: Data Guard replication with automated distribution
 **Your answer: B — likely INCORRECT. Likely correct: D.** Replication type is a choice (**Data Guard or Raft**), not a combination (B). With automated distribution, Data Guard replication is (per the question's framing) supported only when shards are in a **single region**; Raft is the multi-region-friendly option. A (3-region quorum) describes Raft-style consensus, not Data Guard. ⚠️ Not doc-verified; check the Udemy explanation. See [[6. Databases — OCI Database, NoSQL, Caching, DR]].
+
+### U1-Q48 — Recovery Service: 90-day retention, protected from deletion
+**Your answer: A — CORRECT.** Custom **protection policy** (90 days) + **retention lock**, which can only be scheduled **at least 14 days in the future** (a grace period before it becomes immutable), so B's "zero-delay" isn't allowed. Oracle-defined policies are Bronze/Silver/Gold/Platinum with fixed periods (C's approach adds an IAM workaround); D bypasses Recovery Service. (Details from memory, consistent with the option wording; not doc-checked.) See [[6. Databases — OCI Database, NoSQL, Caching, DR]].

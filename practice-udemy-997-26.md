@@ -575,3 +575,15 @@ D. Data Guard replication type under automated data distribution is only support
 **Answer: likely D** (unverified)
 
 ---
+
+### Q48
+A health insurance provider is deploying its core medical records database on an OCI Base Database Service virtual machine DB system. The company's compliance team mandates a strict retention policy where database backups must be retained for exactly 90 days and must be protected against accidental or malicious deletion. As a solutions architect, which configuration should you apply within OCI Database Autonomous Recovery Service to satisfy these requirements?
+
+A. Create a custom protection policy with a backup retention period of 90 days and enable the retention lock with a scheduled lock date at least 14 days in the future.
+B. Create a custom protection policy with a backup retention period of 90 days and immediately activate an absolute zero-delay retention lock to prevent any policy modifications.
+C. Assign the Oracle-defined Platinum protection policy which has a predefined 90-day backup retention period and configure a dynamic IAM policy to block delete API calls.
+D. Configure an automatic backup schedule to an Object Storage bucket with a 90-day lifecycle rule and apply a bucket-level WORM retention lock policy with a 7-day delay.
+
+**Answer: A**
+
+---
