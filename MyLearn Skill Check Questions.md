@@ -1265,3 +1265,6 @@ Options: A. FastConnect (partner) primary + Site-to-Site VPN backup on the same 
 
 ### U1-Q35 — Scale OCI Cache reads: which two are expensive/impractical (reversed)
 **Your answer: B, C — likely matches the key; ⚠️ question ambiguous.** The valid approach is **A**: add **replica nodes** (non-sharded clusters scale out reads, 1–5 nodes) for the peak, then remove them; memory can also be resized in place. B (recreate offline from a backup) and C (GoldenGate to ADW) are impractical. **D is also invalid**: OCI Cache has no automatic minute-by-minute vertical autoscaling, so three of four options are wrong for a "pick two". Check the Udemy key. See [[6. Databases — OCI Database, NoSQL, Caching, DR]].
+
+### U1-Q36 — Bastion session type for targets without Oracle Cloud Agent
+**Your answer: A — INCORRECT. Correct: C.** **Managed SSH sessions require the Oracle Cloud Agent's Bastion plugin** on the target (compute instances only); **port-forwarding sessions** need no agent and reach any private IP/port (databases, RDP…). Max TTL for both = **180 min** (B and D invent 360/240). "Doesn't run the Oracle Cloud Agent" was the deciding phrase. See [[5. Security — OCI IAM, WAF, Certificates, Vault, Cloud Guard]].

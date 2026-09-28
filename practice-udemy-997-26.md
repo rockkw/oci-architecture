@@ -431,3 +431,15 @@ D. Enable automatic vertical auto-scaling within OCI Cache settings to let the c
 **Answer: likely B, C** (⚠️ ambiguous: D describes a feature that doesn't exist, so three options are invalid; A is the only valid approach)
 
 ---
+
+### Q36
+A company wants to secure administrative access to private database instances that do not run the Oracle Cloud Agent, and is considering using OCI Bastion. Which session type and maximum session time-to-live (TTL) should they configure?
+
+A. Select a Managed SSH session and configure the session TTL up to a maximum of 180 minutes.
+B. Select an SSH port forwarding session and configure the session TTL up to a maximum of 360 minutes.
+C. Select an SSH port forwarding session and configure the session TTL up to a maximum of 180 minutes.
+D. Select a Managed SSH session and configure the session TTL up to a maximum of 240 minutes.
+
+**Answer: C**
+
+---
