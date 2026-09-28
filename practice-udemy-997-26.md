@@ -443,3 +443,15 @@ D. Select a Managed SSH session and configure the session TTL up to a maximum of
 **Answer: C**
 
 ---
+
+### Q37
+An infrastructure architect needs to design a monitoring solution for a critical web application fleet where transient network drops occasionally cause missing metric data points. The alarm must evaluate the CpuUtilization metric over a rolling 10-minute period and must only transition to the FIRING state if the sustained utilization remains above 85%. To prevent false positives caused by sporadic missing data points, the solution must explicitly define how the alarm handles periods where no metrics are received. Which configuration should the architect implement within the OCI Alarm definition to achieve this?
+
+A. Set the alarm evaluation "absence of data" policy to LAST_KNOWN and configure the triggering "pending duration" to 10 minutes.
+B. Configure the alarm metric query to use the nvl() MQL function to convert all missing data points to zero while setting the trigger threshold to 85%.
+C. Set the alarm state transition policy to FORCE_OK and decrease the metric sampling resolution from 1 minute to 1 second to overwrite empty intervals.
+D. Create an automated OCI Notification subscription that runs an Oracle Function to insert mock telemetry data into the monitoring namespace whenever a gap is detected.
+
+**Answer: likely A** (unverified: exact OCI name for the missing-data setting)
+
+---

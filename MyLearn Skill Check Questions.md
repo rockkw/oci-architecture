@@ -1268,3 +1268,6 @@ Options: A. FastConnect (partner) primary + Site-to-Site VPN backup on the same 
 
 ### U1-Q36 — Bastion session type for targets without Oracle Cloud Agent
 **Your answer: A — INCORRECT. Correct: C.** **Managed SSH sessions require the Oracle Cloud Agent's Bastion plugin** on the target (compute instances only); **port-forwarding sessions** need no agent and reach any private IP/port (databases, RDP…). Max TTL for both = **180 min** (B and D invent 360/240). "Doesn't run the Oracle Cloud Agent" was the deciding phrase. See [[5. Security — OCI IAM, WAF, Certificates, Vault, Cloud Guard]].
+
+### U1-Q37 — Alarm that tolerates missing data points, sustained 10 minutes above 85%
+**Your answer: B — INCORRECT. Likely correct: A.** A is the only option that both defines missing-data handling at the **alarm** level and uses the **pending duration (trigger delay) = 10 min** for "sustained". `nvl()` (B) isn't an OCI MQL function as far as I know, and zero-filling would mask real outages anyway; C (FORCE_OK, 1-second resolution) and D (inserting fake telemetry) are fabricated/bad practice. ⚠️ I haven't verified the exact OCI alarm setting name for missing data ("LAST_KNOWN"); check the Udemy explanation. See [[8. Management and Governance — OCI Resource Manager, OS Management Hub, Observability]].
