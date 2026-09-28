@@ -90,3 +90,16 @@ D. The OCI Certificates service automatically modifies the local Apache configur
 **Answer: C**
 
 ---
+
+### Q8
+A database operations team needs to route high-volume diagnostic logs from multiple Autonomous Database instances to both an OCI Object Storage bucket for compliance archiving and an OCI Streaming pool for real-time security auditing. The team wants to achieve this with minimal architectural complexity and avoid redundant data pipeline components that inflate operational costs. Which two configurations are unsupported or impractical ways to distribute these logs to both destinations? (Choose two.)
+
+A. Configure a single OCI Connector Hub instance with the database log group as the source, and specify both the Object Storage bucket and the Streaming pool as dual primary targets within that same connector's definition.
+B. Deploy two separate OCI Connector Hub instances that both ingest data from the same source database log group, with one connector targeting the Object Storage bucket and the other targeting the Streaming pool.
+C. Route the database logs into an OCI Streaming pool via a single connector, and leverage a second connector that uses that Streaming pool as a source to deliver the data to Object Storage.
+D. Provision an OCI Search structured query cron job that continuously reads raw log text chunks from the source log groups and uses parallel multi-threaded worker threads to write the payloads to both destinations.
+E. Create an OCI Service Log configuration that natively splits the internal database audit stream into two distinct output streams prior to reaching the OCI Logging service tier.
+
+**Answer (likely key): D, E.** ⚠️ Disputed: per Oracle docs a connector has **one source and one target**, so **A is also unsupported**; B (two connectors) and C (chained connectors) are the supported designs.
+
+---
