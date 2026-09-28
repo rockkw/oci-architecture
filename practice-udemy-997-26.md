@@ -127,3 +127,15 @@ D. You must deploy both peered DR Protection Groups in separate tenant organizat
 **Answer: B**
 
 ---
+
+### Q11
+Your company has built a continuous integration and deployment pipeline using the OCI DevOps service to deploy microservices. To comply with strict enterprise security policies, the deployment team is required to verify the integrity and origin of all Helm charts before they are deployed to your OKE clusters. The security policy also strictly mandates that any PGP keys used for signature verification must be secured centrally and never stored in cleartext. As a solutions architect, which deployment configuration should you recommend to meet these requirements?
+
+A. Store signed Helm charts in OCI Container Registry, configure the DevOps Helm stage to verify them, and reference the public PGP key stored in OCI Vault.
+B. Store signed Helm charts in OCI Artifact Registry, configure the DevOps deploy stage to verify them, and embed the public PGP key in the static config map.
+C. Store signed Helm charts in OCI Object Storage, configure the DevOps command stage to verify them, and download the public PGP key from a public git repo.
+D. Store signed Helm charts in OCI File Storage, configure the DevOps custom stage to verify them, and write the public PGP key in decrypted environment files.
+
+**Answer: A**
+
+---

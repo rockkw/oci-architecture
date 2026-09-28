@@ -1190,3 +1190,6 @@ Options: A. FastConnect (partner) primary + Site-to-Site VPN backup on the same 
 
 ### U1-Q10 — Full Stack DR: DR Protection Group requirement
 **Your answer: B — CORRECT.** One DRPG per region, **peered**, one role primary and the other standby; DR plans (switchover/failover/drills) are built on the standby DRPG. A: same region defeats DR; C: no special FSDR agent on members; D: same tenancy, not separate organizations. See [[Lab 2 - OCI Architect Pro Exam - HADR Design]].
+
+### U1-Q11 — DevOps Helm chart signature verification with a centrally secured PGP key
+**Your answer: A — CORRECT.** Helm charts are OCI artifacts stored in **OCIR** (Container Registry); the DevOps **Helm chart deployment stage** can verify chart signatures using a **PGP public key held as a Vault secret** (never cleartext). B embeds the key in a config map (cleartext); C pulls it from a public repo; D writes it in decrypted env files. All three violate "secured centrally, never cleartext". See [[1. DevOps — OCI DevOps, CI-CD, Observability]].
