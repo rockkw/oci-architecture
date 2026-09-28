@@ -42,3 +42,15 @@ D. Deploy an OCI WAF Regional policy and attach it directly to the private OCI F
 **Answer: D**
 
 ---
+
+### Q4
+A database administrator is reviewing the data protection health status of a critical production database backed up to OCI Database Autonomous Recovery Service. The database has real-time data protection enabled to ensure high-frequency transaction safety. During a routine audit, the administrator notices that the database health status in the protection summary has transitioned from Protected to Warning. As a solutions architect, how should you explain what this Warning status represents regarding potential data loss exposure and recovery capabilities?
+
+A. The Recovery Service cannot recover the database within the current recovery window because the latest automated full and incremental backups have failed completely.
+B. The backup retention period defined in the protection policy has expired, and all older backups have been automatically purged from the Object Storage bucket.
+C. The database can still be recovered within the recovery window, but the potential data loss exposure since the last backup has exceeded 120 minutes.
+D. The database can still be recovered within the recovery window, but the potential data loss exposure since the last backup is greater than 10 seconds.
+
+**Answer: D**
+
+---

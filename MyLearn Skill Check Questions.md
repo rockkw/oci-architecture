@@ -1169,3 +1169,6 @@ Options: A. FastConnect (partner) primary + Site-to-Site VPN backup on the same 
 
 ### U1-Q3 — WAF for private/internal traffic with no DNS changes or reverse proxy
 **Your answer: C — INCORRECT. Correct: D** (Regional WAF policy attached to the private Flexible Load Balancer). Edge WAF is internet-facing, DNS-based, and a reverse proxy, so it fails all three constraints (internal peered-VCN traffic, no public DNS changes, no reverse-proxy routing). A Regional policy enforces at the LB itself, private LBs included. B is fabricated. Rule: *internet-facing/global/DNS → Edge; on the LB, private traffic → Regional.* See [[5. Security — OCI IAM, WAF, Certificates, Vault, Cloud Guard]].
+
+### U1-Q4 — Recovery Service health "Warning" with real-time protection
+**Your answer: C — INCORRECT. Correct: D.** Oracle docs: **Protected** = recoverable within the window and exposure < **10 s** (real-time) or < **70 min** (no real-time); **Warning** = still recoverable within the window but exposure > 10 s (real-time) / > 70 min; **Alert** = can't ensure recovery within the window (option A). C's "120 minutes" is fabricated (the non-real-time threshold is 70). ([Recovery Service docs](https://docs.oracle.com/en-us/iaas/recovery-service/doc/view-recovery-system-details.html)). See [[6. Databases — OCI Database, NoSQL, Caching, DR]].
