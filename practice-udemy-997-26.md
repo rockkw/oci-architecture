@@ -139,3 +139,15 @@ D. Store signed Helm charts in OCI File Storage, configure the DevOps custom sta
 **Answer: A**
 
 ---
+
+### Q12
+A multinational organization enforces a strict compliance policy requiring all infrastructure components to maintain unbroken, historical metric visibility for auditing purposes. The operations team has a scheduled 4-hour maintenance window for a database cluster, during which application workloads will fluctuate drastically and trigger standard high-utilization alarms. To comply with the audit mandates, the architect must ensure that performance metrics continue to be collected and evaluated normally throughout the window, but no actual notifications are dispatched to the operations center. Which approach should the solutions architect direct the team to implement?
+
+A. Disable the affected OCI Alarms prior to the maintenance window and re-enable them immediately upon completion of the database updates.
+B. Modify the MQL expressions within the existing alarms to artificially raise the trigger threshold during the maintenance window, then revert the thresholds afterward.
+C. Delete the existing OCI Notifications subscriptions for the duration of the maintenance window and manually recreate them once the cluster stabilizes.
+D. Create an OCI Alarm Suppression rule specifying the exact alarm names and the 4-hour maintenance window duration to stop notification delivery while leaving the alarms active.
+
+**Answer: D**
+
+---

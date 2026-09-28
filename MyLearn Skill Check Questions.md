@@ -1193,3 +1193,6 @@ Options: A. FastConnect (partner) primary + Site-to-Site VPN backup on the same 
 
 ### U1-Q11 — DevOps Helm chart signature verification with a centrally secured PGP key
 **Your answer: A — CORRECT.** Helm charts are OCI artifacts stored in **OCIR** (Container Registry); the DevOps **Helm chart deployment stage** can verify chart signatures using a **PGP public key held as a Vault secret** (never cleartext). B embeds the key in a config map (cleartext); C pulls it from a public repo; D writes it in decrypted env files. All three violate "secured centrally, never cleartext". See [[1. DevOps — OCI DevOps, CI-CD, Observability]].
+
+### U1-Q12 — Mute alarm notifications during a maintenance window, keep evaluating
+**Your answer: D — CORRECT.** **Alarm suppression** (per alarm, with a time window) stops notifications while the alarm keeps evaluating and metrics keep flowing: exactly "unbroken visibility, no dispatch". A (disable) stops evaluation (what we did to `lab6-test-alarm` in Lab 6, for the opposite reason); B changes the alarm logic and risks leaving it wrong; C (delete subscriptions) breaks every alarm on the topic and needs reconfirmation. The Suppression field appeared on the `mymagnet-instance-cpu` details page in Lab 6 Part C. See [[8. Management and Governance — OCI Resource Manager, OS Management Hub, Observability]].
