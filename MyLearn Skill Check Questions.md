@@ -1286,3 +1286,9 @@ Options: A. FastConnect (partner) primary + Site-to-Site VPN backup on the same 
 
 ### U1-Q42 — OCI Cache: evict least-recently-used keys at the memory limit
 **Your answer: D — CORRECT.** Redis **eviction policy** (`maxmemory-policy`: `allkeys-lru` evicts any key by LRU, `volatile-lru` only keys with a TTL), set via the OCI Cache cluster's configuration. B (FLUSHALL wipes everything), C (autoscaling doesn't exist for OCI Cache, same as Q35's D) and A (Storage Gateway is file-to-Object-Storage, not a cache tier) are distractors. See [[6. Databases — OCI Database, NoSQL, Caching, DR]].
+
+### U1-Q43 — Pass config values to an OCI Function without hardcoding
+**Your answer: D (per guidance; final pick not seen) — CORRECT.** Application/function **configuration variables** are exposed as **environment variables**. For secrets, store a Vault secret OCID (or ciphertext) there and fetch/decrypt in code (capstone enrich function: `LLM_ENDPOINT`, `LLM_API_KEY_SECRET_OCID`). A, B, C are fabricated. See [[14. Serverless — OCI Functions, Events, API Gateway]].
+
+### U1-Q44 — Correlate an ADB service log with who changed network config, in one search
+**Your answer: C — INCORRECT. Correct: B.** **Logging Search** queries several logs at once: `search "<compartment>/_Audit" "<compartment>/<log group>/<service log>" | where …` over one time window, exactly what you did in Lab 6 Part F (the `_Audit` log is searchable alongside other logs). C invents an Audit "merge into diagnostic tables"; A (metrics from text) and D (back-import via Connector Hub) are wrong. See [[8. Management and Governance — OCI Resource Manager, OS Management Hub, Observability]] and [[Lab 6 - OCI Architect Pro Exam - Observability Console Walkthrough]].

@@ -515,3 +515,27 @@ D. Configure the cluster with an explicit Redis eviction policy such as volatile
 **Answer: D**
 
 ---
+
+### Q43
+A developer is deploying a serverless Python function using OCI Functions and needs to access database credentials at runtime without hardcoding them in the function code. Which mechanism should the developer configure to pass these custom parameter values to the function?
+
+A. Configure dynamic groups in IAM, which inject user auth tokens directly inside the function execution context.
+B. Configure custom metadata properties in the container image registry, which are parsed by the runtime context.
+C. Configure local configuration maps inside the regional VCN, which are mounted automatically to container path.
+D. Configure application configuration variables in your OCI Console, which are exposed as environment variables.
+
+**Answer: D**
+
+---
+
+### Q44
+An operations engineer is investigating an intermittent connection failure affecting an Autonomous Database instance. The engineer needs to correlate the database's internal OCI Service Logs with the identity of the administrators who modified network configurations during the same timeframe. To expedite troubleshooting, the engineer wants to perform a single, unified search operation within OCI Logging rather than executing multiple separate scans. Which approach should the solutions architect direct the engineer to follow?
+
+A. Create an OCI Monitoring metric query that converts raw text logs from both sources into numerical data points, and then visually cross-reference the resulting multi-line charts.
+B. Use the OCI Logging Search page to write a single query expression that filters by the compartment ID, spanning both the database service log and the audit log within that time window.
+C. Open the OCI Audit service console and apply a database-specific telemetry filter to automatically merge control-plane audit trails into the database's local operational diagnostic tables.
+D. Configure an OCI Service Connector Hub to temporarily back-import historical tenancy audit logs into the database's active custom log group, then perform a standard localized text search.
+
+**Answer: B**
+
+---
