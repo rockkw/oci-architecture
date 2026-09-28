@@ -163,3 +163,15 @@ D. Storage scaling under LVM is constrained by the initial storage size specifie
 **Answer: D**
 
 ---
+
+### Q14
+Which is NOT a valid capability or constraint of Oracle Cloud Infrastructure (OCI) Container Instances?
+
+A. Launching container workloads instantly without provisioning or managing any actual virtual machine infrastructure.
+B. Allocating dedicated CPU and memory resources per container instance to ensure predictable, VM-grade performances.
+C. Configuring containers to automatically scale horizontally based on custom CPU and memory utilization thresholding.
+D. Securing container execution by leveraging hypervisor-level isolation to prevent any cross-container interference.
+
+**Answer: C**
+
+---

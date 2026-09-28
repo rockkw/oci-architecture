@@ -1199,3 +1199,6 @@ Options: A. FastConnect (partner) primary + Site-to-Site VPN backup on the same 
 
 ### U1-Q13 — Base Database fast provisioning (LVM) storage ceiling
 **Your answer: A — INCORRECT. Correct: D.** Fast provisioning = LVM (single-node dev/test); scaling is capped by the size chosen at provisioning; no in-place LVM→ASM conversion (B fabricated); beyond the cap, new ASM DB system + migrate. A's "80 TB regardless" and C's "unsupported on VMs" are invented. Note 6's LVM/ASM section lacked this; added. See [[6. Databases — OCI Database, NoSQL, Caching, DR]].
+
+### U1-Q14 — Which is NOT a Container Instances capability (reversed)
+**Your answer: C — CORRECT.** Container Instances has **no built-in horizontal autoscaling**: each instance has a fixed shape (OCPU/memory) and you create more instances yourself. For autoscaling containers use **OKE** (HPA/cluster autoscaler, or Virtual Nodes). A (no VMs to manage), B (dedicated shape resources) and D (VM-level/hypervisor isolation) are real. Note 12's Container Instances section covers A, B, D. See [[12. Containers — OCI OKE, Container Instances, OCIR]].
