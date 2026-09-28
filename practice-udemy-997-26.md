@@ -78,3 +78,15 @@ D. Create an OCI Service Log configuration targeted at the compute instances' co
 **Answer: C**
 
 ---
+
+### Q7
+A company is using OCI Certificates to manage TLS certificates and wants to secure a fleet of Apache web servers running on OCI Compute instances. Which statement describes how certificate lifecycle management is handled in this scenario?
+
+A. The OCI Certificates service automatically pushes the renewed certificates and private keys to the Compute instances via the Oracle Cloud Agent.
+B. The web servers must use OCI Vault integration because OCI Certificates only supports certificate provisioning for OCI-managed Load Balancers.
+C. The certificates are automatically renewed within OCI Certificates, but the new certificate version must be retrieved and installed on the Apache web servers manually or via a custom deployment script.
+D. The OCI Certificates service automatically modifies the local Apache configuration files on the Compute instances to point to the newly renewed certificates.
+
+**Answer: C**
+
+---
