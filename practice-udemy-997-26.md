@@ -66,3 +66,15 @@ D. OCI Container Instances, because it runs containerized workloads on optimized
 **Answer: D**
 
 ---
+
+### Q6
+A healthcare provider runs a critical application on OCI Compute instances that interact with an Oracle Database. The application generates proprietary transaction logs saved to a local directory that contain operational errors. The operations team requires these logs to be securely ingested into OCI Logging in near real-time for centralized troubleshooting. However, company security policies strictly prohibit these private instances from having direct public internet access. Which approach should the architect select to achieve this centralized log collection?
+
+A. Install a third-party syslog forwarder on each instance, and configure it to transmit log packets across a public internet gateway directly to the OCI Logging ingestion endpoint.
+B. Write a custom cron script on the instances that periodically uploads the log files via the OCI CLI over an attached NAT Gateway, bypassing the OCI Logging agent completely.
+C. Install the OCI Unified Monitoring Agent on the instances, define a Custom Log with a log object configuration pointing to the local directory, and route traffic privately through a Service Gateway.
+D. Create an OCI Service Log configuration targeted at the compute instances' compartment, which automatically mounts the local instance directories into a shared OCI Object Storage bucket.
+
+**Answer: C**
+
+---
