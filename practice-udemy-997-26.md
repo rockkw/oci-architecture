@@ -188,3 +188,16 @@ E. Route the OCI Alarm notifications to an OCI Notification topic backed by an O
 **Answer: B, C**
 
 ---
+
+### Q16
+A government agency is migrating its central licensing databases to OCI Base Database Service virtual machine DB systems. To satisfy national archiving regulations, the agency must maintain annual database backups for a period of seven years while ensuring that archive creation does not degrade production database performance. As a lead solutions architect, you are designing a compliance archiving strategy utilizing the long-term retention (LTR) backup feature of OCI Database Autonomous Recovery Service. Which two statements are true regarding the behavior and capabilities of long-term retention (LTR) backups in OCI Database Autonomous Recovery Service? (Choose two.)
+
+A. To guarantee backup consistency, the Recovery Service initiates a heavy full backup operation on the active production database at the exact moment the LTR backup is requested.
+B. To avoid production performance overhead, the Recovery Service creates the LTR backup by utilizing already existing operational backups in the system within the defined recovery window.
+C. LTR backups can be used to perform standard in-place restore operations to quickly roll back the production database to a specific compliance checkpoint.
+D. LTR backups are stored in the high-performance Object Storage Standard tier to ensure the fastest possible database restore and cloning times.
+E. LTR backups do not support in-place restore operations and are exclusively intended to be restored as a new database (out-of-place restore).
+
+**Answer: B, E**
+
+---
