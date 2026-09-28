@@ -54,3 +54,15 @@ D. The database can still be recovered within the recovery window, but the poten
 **Answer: D**
 
 ---
+
+### Q5
+A company needs to execute a lightweight, short-lived containerized processing task on demand without managing servers or a Kubernetes cluster. Which OCI service should the solutions architect recommend to satisfy these requirements?
+
+A. OCI DevOps, because it fully automates application provisioning and manages continuous deployment pipelines.
+B. OCI Kubernetes Engine, because it scales and orchestrates containerized workloads across node pools.
+C. OCI Functions, because it provides a serverless platform to execute transient, event-driven functions.
+D. OCI Container Instances, because it runs containerized workloads on optimized, serverless infrastructure.
+
+**Answer: D**
+
+---

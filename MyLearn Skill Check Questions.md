@@ -1172,3 +1172,6 @@ Options: A. FastConnect (partner) primary + Site-to-Site VPN backup on the same 
 
 ### U1-Q4 — Recovery Service health "Warning" with real-time protection
 **Your answer: C — INCORRECT. Correct: D.** Oracle docs: **Protected** = recoverable within the window and exposure < **10 s** (real-time) or < **70 min** (no real-time); **Warning** = still recoverable within the window but exposure > 10 s (real-time) / > 70 min; **Alert** = can't ensure recovery within the window (option A). C's "120 minutes" is fabricated (the non-real-time threshold is 70). ([Recovery Service docs](https://docs.oracle.com/en-us/iaas/recovery-service/doc/view-recovery-system-details.html)). See [[6. Databases — OCI Database, NoSQL, Caching, DR]].
+
+### U1-Q5 — Short-lived containerized task, no servers, no Kubernetes cluster
+**Your answer: B (OKE) — INCORRECT. Correct: D (Container Instances).** "Without managing … a Kubernetes cluster" rules out OKE outright (same swapped-noun trap as MyLearn attempt 2 Q16). Container Instances = any container image, serverless, per-run. Functions (C) is serverless but runs function code in the Fn framework (short invocations); "containerized task/workload" points to Container Instances. DevOps is CI/CD, not a runtime. See [[12. Containers — OCI OKE, Container Instances, OCIR]].
