@@ -539,3 +539,15 @@ D. Configure an OCI Service Connector Hub to temporarily back-import historical 
 **Answer: B**
 
 ---
+
+### Q45
+Which is NOT a valid selection criterion for configuring image retention policies in the Oracle Cloud Infrastructure Container Registry?
+
+A. Deleting any images that have not been given a newer version identifier for a specified number of days.
+B. Deleting any images that have not been pulled from the registry for a specified number of days total.
+C. Deleting any images that exceed a custom cumulative storage limit configured for a single repository.
+D. Deleting any images that lack specific version identifiers that were explicitly marked as being exempt.
+
+**Answer: C**
+
+---

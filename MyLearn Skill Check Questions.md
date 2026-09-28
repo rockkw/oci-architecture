@@ -1292,3 +1292,6 @@ Options: A. FastConnect (partner) primary + Site-to-Site VPN backup on the same 
 
 ### U1-Q44 — Correlate an ADB service log with who changed network config, in one search
 **Your answer: C — INCORRECT. Correct: B.** **Logging Search** queries several logs at once: `search "<compartment>/_Audit" "<compartment>/<log group>/<service log>" | where …` over one time window, exactly what you did in Lab 6 Part F (the `_Audit` log is searchable alongside other logs). C invents an Audit "merge into diagnostic tables"; A (metrics from text) and D (back-import via Connector Hub) are wrong. See [[8. Management and Governance — OCI Resource Manager, OS Management Hub, Observability]] and [[Lab 6 - OCI Architect Pro Exam - Observability Console Walkthrough]].
+
+### U1-Q45 — Which is NOT an OCIR image retention criterion (reversed)
+**Your answer: C — CORRECT.** OCIR retention policies select by **days since last pull** (B), **days since last tagged / no newer tag** (A), with **exempt tags** excluded (D). There's no storage-size criterion (C). Related Tips row: global vs local retention policies, 48-hour undelete. See [[12. Containers — OCI OKE, Container Instances, OCIR]].
