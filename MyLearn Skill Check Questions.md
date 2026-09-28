@@ -1235,3 +1235,6 @@ Options: A. FastConnect (partner) primary + Site-to-Site VPN backup on the same 
 
 ### U1-Q25 — Automatic OCIR image scanning on push and on new CVEs
 **Your answer: A — CORRECT.** **Vulnerability Scanning Service container image targets** point at OCIR repositories (or a whole compartment, so new repos are covered automatically); images are scanned on push and re-scanned as new CVEs are published. B, C and D are custom builds when a native service exists (the "heavier/manual option" trap). See [[12. Containers — OCI OKE, Container Instances, OCIR]] and [[5. Security — OCI IAM, WAF, Certificates, Vault, Cloud Guard]].
+
+### U1-Q26 — Globally Distributed Autonomous Database: switching key manager later
+**Your answer: A — likely CORRECT.** For Globally Distributed Autonomous Database, the **encryption key type** (Oracle-managed / OCI Vault / Oracle Key Vault) is chosen at creation and **can't be changed afterwards**, so pick the final key manager up front. B, C, D invent procedures. (Based on the documented creation-time restriction; not re-verified this session.) See [[6. Databases — OCI Database, NoSQL, Caching, DR]].

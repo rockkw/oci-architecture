@@ -309,3 +309,15 @@ D. Implement a Kubernetes cronjob within OKE that runs hourly to pull down new i
 **Answer: A**
 
 ---
+
+### Q26
+A medical systems provider is planning a Globally Distributed Autonomous AI Database deployment. The security team initially selects OCI Vault Service (KMS) but plans to transition to Oracle Key Vault later during expansion. As a solutions architect, which critical design limitation regarding encryption key management must you share with the team?
+
+A. The encryption key type cannot be changed from OCI Vault Service (KMS) to Oracle Key Vault once the database is created.
+B. Oracle Key Vault (OKV) can only be enabled if the central catalog database is migrated to an on-premises Exadata environment first.
+C. Changing encryption key managers requires a database reboot and manually recreating the OCI private endpoint for every active database shard.
+D. Both key managers can be run concurrently, but each database shard must be temporarily stopped to rotate the master keys.
+
+**Answer: A**
+
+---
