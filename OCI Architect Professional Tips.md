@@ -152,6 +152,7 @@ come from the source entry.
 
 | Trap (the wrong-but-plausible option) | Reality / correct answer | Seen in | Details |
 | --- | --- | --- | --- |
+| **Logging Analytics** (or Monitoring metrics) to build a tenancy-wide resource inventory | **OCI Search (resource search)**: one structured query (`query <type> resources where …`) across all compartments returns type, compartment, timeCreated | Udemy exam 1 Q17 (missed) | [[8. Management and Governance — OCI Resource Manager, OS Management Hub, Observability]] |
 | One Connector Hub connector with **two (or more) targets** | **One source → one target per connector.** Fan out with **two connectors on the same source**, or **chain** (source → Streaming → second connector → Object Storage) | Udemy exam 1 Q8 (question flawed: treats A as valid) | [[8. Management and Governance — OCI Resource Manager, OS Management Hub, Observability]] |
 | **Dimension** or **Resolution** is the aggregation time window | **Interval** (`[5m]`). Resolution = spacing between window starts (API-only); dimensions filter | Att 2 Q6 (missed); Att 2 Q9 | [[8. Management and Governance — OCI Resource Manager, OS Management Hub, Observability]] |
 | **Interval** is an optional MQL component | Required: metric, interval, statistic. Optional: dimensions, grouping function | Att 2 Q8 (half-missed) | [[8. Management and Governance — OCI Resource Manager, OS Management Hub, Observability]] |
