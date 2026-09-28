@@ -371,3 +371,15 @@ E. Existing child tenancies can be invited to join the organization even if they
 **Answer: A, C**
 
 ---
+
+### Q31
+A financial enterprise hosts a web application behind an OCI Flexible Load Balancer inside a private subnet. Due to regulatory compliance, all web traffic must be inspected for SQL injection and cross-site scripting vulnerabilities. The security team mandates that web application firewall inspection must occur locally within the OCI region without routing private traffic through global edge nodes. As a solutions architect, which WAF deployment strategy should you recommend to meet these requirements?
+
+A. Configure an OCI Web Application Firewall regional policy, attach it directly to your regional Flexible Load Balancer, and define those custom security rules.
+B. Configure an OCI Web Application Firewall edge policy, attach it directly to your Traffic Management steering policy, and define all those custom security rules.
+C. Configure an OCI Network Firewall with an integrated decryption policy, deploy it in a public transit subnet, and route all traffic through the local gateway.
+D. Configure an OCI Web Application Firewall regional policy, deploy it on a dedicated compute instance in a public subnet, and route traffic to the load balancer.
+
+**Answer: A**
+
+---

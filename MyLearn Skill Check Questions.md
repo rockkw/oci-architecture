@@ -1250,3 +1250,6 @@ Options: A. FastConnect (partner) primary + Site-to-Site VPN backup on the same 
 
 ### U1-Q30 — Organization Management boundaries and subscription constraints (choose TWO)
 **Your answer: B, C — PARTLY CORRECT (C right, B wrong). Correct: A, C** (verified, [Planning Considerations](https://docs.oracle.com/en-us/iaas/Content/General/organization/organization_planning.htm)). PAYG/Trial = 0 child tenancies; child IAM is isolated ("IAM policies can't inherit across tenancies"; governance rules cover regions/quotas/tags, not IAM). B contradicts A; D: parent must be subscribed to the **superset** of child regions; E: Free Tier/Trial can't be invited until paid. See [[8. Management and Governance — OCI Resource Manager, OS Management Hub, Observability]].
+
+### U1-Q31 — WAF inspection in-region for a private LB (same concept as Q3)
+**Your answer: A — CORRECT** (fixed after missing Q3). Regional WAF policy attached to the Flexible Load Balancer = in-region inspection, works for private LBs, no edge routing. B: edge policies don't attach to Traffic Management; C: Network Firewall isn't the SQLi/XSS layer; D: regional WAF isn't deployed on your own compute. See [[5. Security — OCI IAM, WAF, Certificates, Vault, Cloud Guard]] ("WAF deployment models: Edge vs. Regional").
